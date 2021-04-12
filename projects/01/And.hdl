@@ -14,5 +14,7 @@ CHIP And {
     OUT out;
 
     PARTS:
-    // Put your code here:
+    // Just negate NAND gate
+    Nand(a = a, b = b, out=nout);
+    Not(in = nout, out = out);
 }

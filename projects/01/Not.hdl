@@ -13,5 +13,9 @@ CHIP Not {
     OUT out;
 
     PARTS:
-    // Put your code here:
+    // When you wire both ends of NAND gate it will be a NOT gate!! (From google!)
+    // Because if both inputs take a single value, the part of the NAND truth table which is activated is both 0s or both 1s. 
+    // And in Nand (1,1) = 0,  (0,0) => 1. Which effectively means a NOT gate.
+    Nand(a = in, b = in, out=out);
 }
+
