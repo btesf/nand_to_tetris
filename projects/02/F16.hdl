@@ -1,0 +1,12 @@
+CHIP F16 {
+    IN a[16], b[16], f;
+    OUT out[16];
+    
+    PARTS:
+    Add16(a=a, b=b, out=addOut);
+    And16(a=a, b=b, out=andOut);
+    Not(in=f, out=notf);
+    Zx16(a=addOut, b=f, out=zxAddOut);
+    Zx16(a=andOut, b=notf, out=zxAndOut);
+    Or16(a=zxAddOut, b=zxAndOut, out=out);
+}
