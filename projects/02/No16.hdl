@@ -1,0 +1,7 @@
+CHIP No16 {
+    IN a[16], b[16];
+    OUT out[16];
+
+    PARTS:
+    Nx16(a=a, b=b, out=out);
+}
