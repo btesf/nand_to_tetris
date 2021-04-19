@@ -1,9 +1,9 @@
 CHIP Zr16 {
-    IN a[16];
+    IN in[16];
     OUT out;
 
     PARTS:
-    And16(a=a, b=true, out[0..7]=andOut1, out[8..15]=andOut2);
+    And16(a=in, b=true, out[0..7]=andOut1, out[8..15]=andOut2);
     Or8Way(in=andOut1, out=c1);
     Or8Way(in=andOut2, out=c2);
     Or(a=c1, b=c2, out=orOut);

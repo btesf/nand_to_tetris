@@ -1,22 +1,22 @@
 CHIP Zx16 {
-    IN a[16], b;
+    IN in[16], zx;
     OUT out[16];
 
     PARTS:
-    Zx(a=a[0], b=b, out=out[0]);
-    Zx(a=a[1], b=b, out=out[1]);
-    Zx(a=a[2], b=b, out=out[2]);
-    Zx(a=a[3], b=b, out=out[3]);
-    Zx(a=a[4], b=b, out=out[4]);
-    Zx(a=a[5], b=b, out=out[5]);
-    Zx(a=a[6], b=b, out=out[6]);
-    Zx(a=a[7], b=b, out=out[7]);
-    Zx(a=a[8], b=b, out=out[8]);
-    Zx(a=a[9], b=b, out=out[9]);
-    Zx(a=a[10], b=b, out=out[10]);
-    Zx(a=a[11], b=b, out=out[11]);
-    Zx(a=a[12], b=b, out=out[12]);
-    Zx(a=a[13], b=b, out=out[13]);
-    Zx(a=a[14], b=b, out=out[14]);
-    Zx(a=a[15], b=b, out=out[15]);
+    Zx(in=in[0], zx=zx, out=out[0]);
+    Zx(in=in[1], zx=zx, out=out[1]);
+    Zx(in=in[2], zx=zx, out=out[2]);
+    Zx(in=in[3], zx=zx, out=out[3]);
+    Zx(in=in[4], zx=zx, out=out[4]);
+    Zx(in=in[5], zx=zx, out=out[5]);
+    Zx(in=in[6], zx=zx, out=out[6]);
+    Zx(in=in[7], zx=zx, out=out[7]);
+    Zx(in=in[8], zx=zx, out=out[8]);
+    Zx(in=in[9], zx=zx, out=out[9]);
+    Zx(in=in[10], zx=zx, out=out[10]);
+    Zx(in=in[11], zx=zx, out=out[11]);
+    Zx(in=in[12], zx=zx, out=out[12]);
+    Zx(in=in[13], zx=zx, out=out[13]);
+    Zx(in=in[14], zx=zx, out=out[14]);
+    Zx(in=in[15], zx=zx, out=out[15]);
 }
