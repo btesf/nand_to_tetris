@@ -47,6 +47,7 @@ CHIP ALU {
     Zy16(a=y, b=zy, out=zyOut);
     Ny16(a=zyOut, b=ny, out=nyOut);
     F16(a=nxOut, b=nyOut, f=f, out=f16Out);
-    No16(a=f16Out, b=no, out=out);
-    
+    No16(a=f16Out, b=no, out=out1, out=out);
+    Ng16(a=out1, out=ng);
+    Zr16(a=out1, out=zr);
 }
