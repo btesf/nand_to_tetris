@@ -1,7 +1,7 @@
 CHIP Ny16 {
-    IN a[16], b;
+    IN in[16], ny;
     OUT out[16];
 
     PARTS:
-    Nx16(a=a, b=b, out=out);
+    Nx16(in=in, nx=ny, out=out);
 }

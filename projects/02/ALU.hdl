@@ -43,11 +43,11 @@ CHIP ALU {
 
     PARTS:
     Zx16(a=x, b=zx, out=zxOut);
-    Nx16(a=zxOut, b=nx, out=nxOut);
+    Nx16(in=zxOut, nx=nx, out=nxOut);
     Zy16(a=y, b=zy, out=zyOut);
-    Ny16(a=zyOut, b=ny, out=nyOut);
+    Ny16(in=zyOut, ny=ny, out=nyOut);
     F16(a=nxOut, b=nyOut, f=f, out=f16Out);
-    No16(a=f16Out, b=no, out=out1, out=out);
+    No16(in=f16Out, no=no, out=out1, out=out);
     Ng16(a=out1, out=ng);
     Zr16(a=out1, out=zr);
 }
