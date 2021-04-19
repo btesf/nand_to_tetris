@@ -42,12 +42,12 @@ CHIP ALU {
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
-    Zx16(a=x, b=zx, out=zxOut);
+    Zx16(in=x, zx=zx, out=zxOut);
     Nx16(in=zxOut, nx=nx, out=nxOut);
-    Zy16(a=y, b=zy, out=zyOut);
+    Zy16(in=y, zy=zy, out=zyOut);
     Ny16(in=zyOut, ny=ny, out=nyOut);
     F16(a=nxOut, b=nyOut, f=f, out=f16Out);
     No16(in=f16Out, no=no, out=out1, out=out);
     Ng16(a=out1, out=ng);
-    Zr16(a=out1, out=zr);
+    Zr16(in=out1, out=zr);
 }
