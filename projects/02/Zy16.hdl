@@ -1,7 +1,7 @@
 CHIP Zy16 {
-    IN a[16], b;
+    IN in[16], zy;
     OUT out[16];
 
     PARTS:
-    Zx16(a=a, b=b, out=out);
+    Zx16(in=in, zx=zy, out=out);
 }

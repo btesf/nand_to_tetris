@@ -3,20 +3,20 @@ CHIP Nx16 {
     OUT out[16];
 
     PARTS:
-    Nx(a=in[0], b=nx, out=out[0]);
-    Nx(a=in[1], b=nx, out=out[1]);
-    Nx(a=in[2], b=nx, out=out[2]);
-    Nx(a=in[3], b=nx, out=out[3]);
-    Nx(a=in[4], b=nx, out=out[4]);
-    Nx(a=in[5], b=nx, out=out[5]);
-    Nx(a=in[6], b=nx, out=out[6]);
-    Nx(a=in[7], b=nx, out=out[7]);
-    Nx(a=in[8], b=nx, out=out[8]);
-    Nx(a=in[9], b=nx, out=out[9]);
-    Nx(a=in[10], b=nx, out=out[10]);
-    Nx(a=in[11], b=nx, out=out[11]);
-    Nx(a=in[12], b=nx, out=out[12]);
-    Nx(a=in[13], b=nx, out=out[13]);
-    Nx(a=in[14], b=nx, out=out[14]);
-    Nx(a=in[15], b=nx, out=out[15]);
+    Nx(in=in[0], nx=nx, out=out[0]);
+    Nx(in=in[1], nx=nx, out=out[1]);
+    Nx(in=in[2], nx=nx, out=out[2]);
+    Nx(in=in[3], nx=nx, out=out[3]);
+    Nx(in=in[4], nx=nx, out=out[4]);
+    Nx(in=in[5], nx=nx, out=out[5]);
+    Nx(in=in[6], nx=nx, out=out[6]);
+    Nx(in=in[7], nx=nx, out=out[7]);
+    Nx(in=in[8], nx=nx, out=out[8]);
+    Nx(in=in[9], nx=nx, out=out[9]);
+    Nx(in=in[10], nx=nx, out=out[10]);
+    Nx(in=in[11], nx=nx, out=out[11]);
+    Nx(in=in[12], nx=nx, out=out[12]);
+    Nx(in=in[13], nx=nx, out=out[13]);
+    Nx(in=in[14], nx=nx, out=out[14]);
+    Nx(in=in[15], nx=nx, out=out[15]);
 }
