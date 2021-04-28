@@ -29,7 +29,11 @@ CHIP Memory {
     PARTS:
     // Put your code here
     DMux(in=load, sel=address[14], a=a, b=b);
-    RAM16K(in=in, address=address[0..13], load=a, out=out1);
-    RAM16K(in=in, address=address[0..13], load=b, out=out2);
-    Mux16(a=out1, b=out2, sel=address[14], out=out);
+    RAM16K(in=in, address=address[0..13], load=a, out=ram1Out);
+    Screen(in=in, address=address[0..12], load=b, out=screenOut);
+    Keyboard(out=kbOut);
+    //screen can only take add[0-12]. add[13] is beyond the max address inputs it can take.
+    //So add[13] can be used as selector between screen and Keyboard (keyboard register resides next to screen memory block)
+    Mux16(a=screenOut, b=kbOut, sel=address[13], out=screenAndKbOut);
+    Mux16(a=ram1Out, b=screenAndKbOut, sel=address[14], out=out);
 }
