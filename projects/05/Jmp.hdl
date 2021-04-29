@@ -1,0 +1,23 @@
+CHIP Jmp {
+    IN j1, j2, j3, zr, ng;
+    OUT out;
+
+    PARTS:
+    Not(in=j1, out=notJ1);
+    Not(in=j2, out=notJ2);
+    Not(in=j3, out=notJ3);
+    Not(in=zr, out=notZr);
+    Not(in=ng, out=notNg);
+
+    And4(a=notJ1, b=notJ2, c=j3, d=notNg, out=JGT);
+    And4(a=notJ1, b=j2, c=notJ3, d=zr, out=JEQ);
+    Or(a=ng, b=zr, out=orOut1);
+    And4(a=notJ1, b=j2, c=j3, d=orOut1, out=JGE);
+    And4(a=j1, b=notJ2, c=notJ3, d=ng, out=JLT);
+    And4(a=j1, b=notJ2, c=j3, d=notZr, out=JNE);
+    Or(a=zr, b=ng, out=outOut2);
+    And4(a=j1, b=j2, c=notJ3, d=outOut2, out=JLE);
+    And4(a=j1, b=j2, c=j3, d=true, out=JMP);
+
+    Or8Way(in[0]=JGT, in[1]=JEQ, in[2]=JGE, in[3]=JLT, in[4]=JNE, in[5]=JLE, in[6]=JMP, in[7]=false, out=out);
+}
