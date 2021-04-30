@@ -1,3 +1,25 @@
+/*
+*  To complete this first a truth table containing j1, j2, j3, zr, ng is created (with 2^5 combinations)
+* and then the unique places where out=1 is converted into boolean expression
+* 
+* |j1 |j2 |j3 |zr |ng |out|
+* | 0 | 0 | 1 | 0 | 0 |   |
+* | 0 | 0 | 1 | 1 | 0 |   |
+* | 0 | 1 | 0 | 1 | 0 |   |
+* | 0 | 1 | 0 | 1 | 1 |   |
+* ...
+* 
+* The conditions where out will be true is shown in the picture "jump_conditions.jpg" in current folder.
+* Then the ff. boolean expressions comes out for each jump types:
+*     notJ1.notJ2.notJ3=<DO NOTHING>
+*     notJ1.notJ2.j3.(notNg.notZr) = JGT
+*     notJ1.j2.notJ3.zr=JEQ
+*     notJ1.j2.j3.(notNg+zr)=JGE
+*     j1.notJ2.notJ3.ng=JLT
+*     j1.notJ2.j3.notZr.out=JNE
+*     j1.j2.notJ3.(zr+ng)=JLE
+*     j1.j2.j3=JMP
+*/
 CHIP Jmp {
     IN j1, j2, j3, zr, ng;
     OUT out;

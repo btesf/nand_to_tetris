@@ -25,6 +25,8 @@
  * than to the address resulting from executing the current instruction. 
  */
 
+
+//see CPU.jpg for more information
 CHIP CPU {
 
     IN  inM[16],         // M value input  (M = contents of RAM[A])
