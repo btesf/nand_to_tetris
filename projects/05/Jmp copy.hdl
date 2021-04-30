@@ -9,10 +9,9 @@ CHIP Jmp {
     Not(in=zr, out=notZr);
     Not(in=ng, out=notNg);
 
-    And(a=notNg, b=notZr, out=andOut1);
-    And4(a=notJ1, b=notJ2, c=j3, d=andOut1, out=JGT);
+    And4(a=notJ1, b=notJ2, c=j3, d=notNg, out=JGT);
     And4(a=notJ1, b=j2, c=notJ3, d=zr, out=JEQ);
-    Or(a=notNg, b=zr, out=orOut1);
+    Or(a=ng, b=zr, out=orOut1);
     And4(a=notJ1, b=j2, c=j3, d=orOut1, out=JGE);
     And4(a=j1, b=notJ2, c=notJ3, d=ng, out=JLT);
     And4(a=j1, b=notJ2, c=j3, d=notZr, out=JNE);

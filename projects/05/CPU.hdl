@@ -39,5 +39,32 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    //decode to get an opcode
+    Ng16(a=instruction, out=opCode);
+
+    Mux16(a=instruction, b=aluOut, sel=opCode, out=mux1Out);
+    //A-Register: is loaded when d1 (instruction[5]) is set or when opCode == 0 (in instruction mode)
+    Not(in=opCode, out=notOpCode);
+    Or(a=instruction[5], b=notOpCode, out=loadAReg);
+    ARegister(in=mux1Out, load=loadAReg, out[0..14]=addressM, out=regAOut);
+
+    //2nd Mux going into ALU: sel=a => instruction[12]
+    Mux16(a=regAOut, b=inM, sel=instruction[12], out=mux2Out);
+
+    //D-Register: load=d2 => instruction[4]
+    DRegister(in=aluOut, load=instruction[4], out=regDOut);
+
+    //ALU: zx=c1, nx=c2, zy=c3, ny=c4, f=c5, no=c6
+    ALU(x=regDOut, y=mux2Out, zx=instruction[11] , nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6],  zr=aluZr, ng=aluNg, out=aluOut, out=outM);
+    
+    //JMP logic
+    Jmp(j1=instruction[2], j2=instruction[1], j3=instruction[0], zr=aluZr, ng=aluNg, out=jmpOut);
+    //jmpOut value should be considred only in C-instruction mode (opcode = 1)
+    And(a=jmpOut, b=opCode, out=load);
+    //PC will be incremented if "load"(jump) signal is not set
+    Not(in=load,out=inc);
+    PC(in=regAOut,load=load,inc=inc,reset=reset, out[0..14]=pc);
+
+    //writeM : only works if opCode is 1 (C-instruction) and if d3 (instruction[3]) is enabled
+    And(a=opCode, b=instruction[3], out=writeM);
 }
