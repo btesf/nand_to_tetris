@@ -70,8 +70,8 @@ class Parser {
         for(String line : rawLines){
             if(!StringUtils.isEmpty(line)) line.trim()
             if(!StringUtils.isEmpty(line)){
-                if(line.startsWith("//")) continue;
-                line = line.replaceAll("//.*", "");
+                if(line.startsWith("//")) continue; //remove comment lines
+                line = line.replaceAll("//.*", ""); //remove comments at the end of a statement
                 if(!StringUtils.isEmpty(line)) this.sourceCode.add(line);
             }
         }

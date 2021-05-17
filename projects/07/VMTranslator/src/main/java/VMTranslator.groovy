@@ -2,34 +2,26 @@ import groovy.io.FileType
 
 class VMTranslator {
 
-
-    static void main(def args){
+    public static void main(def args){
         List<String> vmSourceFiles = []
         File sourceFile = new File( args[1])
-
+        //if a the source file is a directory, read all the files
         if(sourceFile.isDirectory()){
             sourceFile.eachFileRecurse (FileType.FILES) { file ->
-                vmSourceFiles << file.absolutePath
+                if(file.absolutePath.endsWith(".vm")) vmSourceFiles << file.absolutePath
             }
         } else {
-            vmSourceFiles << args[0]
+            String filename = args[1]
+            if(filename.endsWith(".vm")) vmSourceFiles << filename
         }
 
         CodeWriter codeWriter = null
+
         try{
-
-            String destinationDirectory = args[1].substring(0, args[1].lastIndexOf("/") + 1) //include the last slash
             for(String fileName : vmSourceFiles){
-                String destinationFileName = fileName.replaceAll(destinationDirectory, "") //only leave the file name with extension
-                        .replaceAll("[.].*", "")
-                if(!fileName.endsWith(".vm")) continue //only accept .VM files
                 Parser parser = new Parser(fileName)
-                String destinationPath = destinationDirectory + destinationFileName + ".asm"
+                String destinationPath = getDestinationAsmFile(fileName);
                 codeWriter = new CodeWriter(destinationPath)
-
-                String line = ""
-                codeWriter.writeLineToFile(line)
-
                 while(parser.hasMoreCommands()){
                     CommandType commandType = parser.commandType();
                     switch(commandType){
@@ -59,9 +51,9 @@ class VMTranslator {
         println "Translation completed";
     }
 
-    private static String getDesinationFile(String[] args) {
-        String destinationDirectory = args[1].substring(0, args[1].lastIndexOf("/") + 1) //include the last slash
-        String destinationFileName = args[1].toString().replaceAll(destinationDirectory, "") //only leave the file name with extension
+    private static String getDestinationAsmFile(String fileName) {
+        String destinationDirectory = fileName.substring(0, fileName.lastIndexOf("/") + 1) //include the last slash
+        String destinationFileName =fileName.toString().replaceAll(destinationDirectory, "") //only leave the file name with extension
                 .replaceAll("[.].*", "")
         String destinationPath = destinationDirectory + destinationFileName + ".asm"
         return destinationPath

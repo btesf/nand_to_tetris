@@ -3,8 +3,7 @@ import javax.naming.OperationNotSupportedException
 class CodeWriter {
 
     private static ins_counter = 0;
-    private final Map<String, String> memorySegmentToRegisterMap = ["local" : "LCL", "argument" : "ARG", "this" : "THIS", "that" : "THAT", "pointer" : "pointer" /* will be resolved by getWorkingAddressForMemorySegment*/,
-                                                                    "static" : "16", "temp" : "temp" /* will be resolved by getWorkingAddressForMemorySegment*/]
+    private final Map<String, String> memorySegmentToRegisterMap = ["local" : "LCL", "argument" : "ARG", "this" : "THIS", "that" : "THAT", "static" : "16"]
     private final List<String> TEMP_REGISTERS = ["R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"]
     private FileOutputStream fileOutputStream
 
@@ -12,62 +11,22 @@ class CodeWriter {
         fileOutputStream = new FileOutputStream(outputFileName)
     }
 
-    void setOutputFile(String outputFileName) {
-        this.close()
-        fileOutputStream = new FileOutputStream(outputFileName)
-    }
-
+    /**
+     * @SP is a pointer to the stack "segment" and it points to one level above the top most stack element address.
+     * e.g. if the top element is found at addr M[256], @SP points to M[257]
+     *
+     * To write to the top most element in the stack, we subtract one from the @SP memory value to find the address of the "slot"
+     * @param operation
+     */
     void writeArithmetic(String operation){
-        String arithmeticAsm = "";
-        arithmeticAsm += "@SP \n"
-        arithmeticAsm += "A=M-1 \n" //go one level below to the current stack pointer (which is always one above the top most stack element) to pick the top most element
-
+        String arithmeticAsm;
         if(operation == "neg"){
-            arithmeticAsm += "D=M \n" //keep the value in register D
-            arithmeticAsm += "D=!D \n"
-
-            arithmeticAsm += "@SP \n"
-            //replace the top most stack element
-            arithmeticAsm += "A=M-1 \n" //remove the first operand (y)
-
-            arithmeticAsm += "M=D \n" //replace second operand with a value from D
-            //@SP don't need to be updated
-
+            arithmeticAsm = writeNegArithmetic()
         } else if(operation == "not"){
-
-            arithmeticAsm += "D=M \n" //keep the value in register D
-            arithmeticAsm += "D=!D \n"
-            arithmeticAsm += "A=-1 \n"
-            arithmeticAsm += "D=D-A \n"
-
-            arithmeticAsm += "@SP \n"
-            //replace the top most stack element
-            arithmeticAsm += "A=M-1 \n" //remove the first operand (y)
-
-            arithmeticAsm += "M=D \n" //replace second operand with a value from D
-            //@SP don't need to be updated
-
+            arithmeticAsm = writeNotArithmetic();
         } else {
-            arithmeticAsm += "A=A-1 \n" //go one level below to the current stack pointer (which is always one above the top most stack element) to pick the top most element
-            arithmeticAsm += "D=M \n" //keep the value in register D
-            arithmeticAsm += "A=A+1 \n" //go one level down again to read the second element in the stack
-            //D contains "x" (operand 1), M[A] contains 'y' (operand 2)
-            arithmeticAsm += getAsmForArithmeticOperation(operation)
-
-
-            arithmeticAsm += "@SP \n"
-            arithmeticAsm += "A=M-1 \n" //remove the first operand (y)
-            arithmeticAsm += "A=A-1 \n" //remove the second operand (x)
-
-            arithmeticAsm += "M=D \n" //replace second operand with a value from D
-            //decrement the stack pointer value by one
-            arithmeticAsm += "@SP \n"
-            arithmeticAsm += "D=M-1 \n"
-            arithmeticAsm += "M=D \n"
-
+            arithmeticAsm = writeTwoOperandArithmetic(operation)
         }
-        //getAsmForArithmeticOperation always saves the arithmetic result in Register D; Thus save the value back on the top of the stack
-        //where the saving stack index is already pointed by register "A" above
         writeLineToFile(arithmeticAsm)
     }
 
@@ -85,8 +44,7 @@ class CodeWriter {
             line += "@${memoryIndex} \n"
             line += "D=A \n" //store the constant value to D register
         } else {
-            String register = getRegisterForSegment(memorySegment)
-            line += getWorkingAddressForMemorySegment(register, memoryIndex)
+            line += getWorkingAddressForMemorySegment(memorySegment, memoryIndex)
             line += "D=M \n" //store the value of the selected address to D register
         }
         line += "@SP \n" //select the stack pointer address
@@ -99,16 +57,16 @@ class CodeWriter {
         return line;
     }
 
-    private String getWorkingAddressForMemorySegment(String register, int memoryIndex){
+    private String getWorkingAddressForMemorySegment(String memorySegment, int memoryIndex){
         String line = ""
-        if(register == "temp"){
+        if(memorySegment == "temp"){
             line += ("@" + TEMP_REGISTERS.get(memoryIndex) + " \n")
-        }
-        else if(register == "pointer"){
+        } else if(memorySegment == "pointer"){
             if(memoryIndex != 0 && memoryIndex != 1) throw new RuntimeException("Memory index for pointer can only be 0 or 1")
             line += (memoryIndex == 0 ? "@THIS" : "@THAT")
             line += " \n"
-        }else {
+        } else {
+            String register = getRegisterForSegment(memorySegment)
             line += "@${register} \n"
             line += "D=M \n"
             line += "@${memoryIndex} \n"
@@ -118,33 +76,23 @@ class CodeWriter {
     }
 
     private String getPopAsm(String memorySegment, int memoryIndex){
-        String line = "\n";
         //decrement SP by 1
-        line += "@SP \n"
+        String line = "@SP \n"
         line += "M=M-1 \n"
-
-        String register = getRegisterForSegment(memorySegment)
-        line += getWorkingAddressForMemorySegment(register, memoryIndex)
-        //put the destination address in temporary register
-        line += "D=A \n"
-        line += "@13 \n"
-        line += "M=D \n"
-
+        line += getWorkingAddressForMemorySegment(memorySegment, memoryIndex)
+        line += "D=A \n"  //put the destination address in temporary register;
+        line += "@13 \n"  //@13 is a general purpose register. (other general purpose registers are @14 and @15);
+        line += "M=D \n" //save the destination address (saved in D-register) in to the temporary general purpose register @13 because register D is going to be reused.
         //read current value at @SP
         line += "@SP \n"
-        line += "A=M \n"
-        line += "D=M \n"
+        line += "A=M \n" //go to the stack memory stack top most element
+        line += "D=M \n" //save the value into D register
         line += "@13 \n" //destination address is temporarily saved here
-        line += "A=M \n"
-        line += "M=D \n"
-
-        line += "\n"
+        line += "A=M \n" //load destination address to reg-A to select the memory
+        line += "M=D \n" //save the value of the top most element in the address saved at @13
         return line;
     }
 
-    /*   Method operates on operand "x" (which is the top most element in the stack) which is already stored in register 'D' before this method is invoked.
-     *   Method always save the final result/outcome on Register D
-     */
     private String getAsmForArithmeticOperation(String operation) {
         String arithmeticAsm = "";
         switch (operation) {
@@ -154,7 +102,7 @@ class CodeWriter {
             case "sub":
                 arithmeticAsm += "D=D-M \n"
                 break;
-            case "eq":
+            case "eq": //set D = -1 if eq or 0 if not
                 arithmeticAsm += "D=D-M \n"
                 arithmeticAsm += "@vm.logic.cmp.true.${ins_counter} \n"
                 arithmeticAsm += "D;JEQ \n"
@@ -165,7 +113,7 @@ class CodeWriter {
                 arithmeticAsm += "D=-1 \n"
                 arithmeticAsm += "(vm.logic.cmp.end.${ins_counter}) \n"
                 break;
-            case "gt":
+            case "gt": //set D = -1 if gt or 0 if not
                 arithmeticAsm += "D=D-M \n"
                 arithmeticAsm += "@vm.logic.cmp.true.${ins_counter} \n"
                 arithmeticAsm += "D;JGT \n"
@@ -176,7 +124,7 @@ class CodeWriter {
                 arithmeticAsm += "D=-1 \n"
                 arithmeticAsm += "(vm.logic.cmp.end.${ins_counter}) \n"
                 break;
-            case "lt":
+            case "lt": //set D = -1 if lt or 0 if not
                 arithmeticAsm += "D=D-M \n"
                 arithmeticAsm += "@vm.logic.cmp.true.${ins_counter} \n"
                 arithmeticAsm += "D;JLT \n"
@@ -200,6 +148,54 @@ class CodeWriter {
         return arithmeticAsm
     }
 
+    private String writeTwoOperandArithmetic(String operation) {
+        String line = "@SP \n" //select stack pointer (equivalent to R0 or @0)
+        line += "A=M-1 \n" //go to the stack segment pointed by @SP and find top most stack element (the stack pointer is always one above the top most stack element)
+        line += "A=A-1 \n"  //go one level down again to read the second element (operand) in the stack
+        line += "D=M \n" //get the second top element (operand x) in the stack and keep the value in register D
+        line += "A=A+1 \n"  //get the address of the top most element (operand y) in the stack
+        //D contains "x" (operand 1), M[A] contains 'y' (operand 2)
+        line += getAsmForArithmeticOperation(operation)
+        line += "@SP \n"
+        line += "A=M-1 \n" //go to the second operand (y) address
+        line += "A=A-1 \n" //go to the first operand (x) address
+        line += "M=D \n" //replace first operand with a value from D
+        line += "@SP \n"
+        line += "D=M-1 \n" //calculate the new address of the stack pointer; which is one value down from previous; i.e. it points above the x operand (y is discarded)
+        line += "M=D \n" //write the calculated stack pointer address to SP
+        line
+    }
+
+    private String writeNegArithmetic() {
+        String line = "";
+        line += "@SP \n" //select stack pointer (equivalent to R0 or @0)
+        line += "A=M-1 \n" //go to the stack segment pointed by @SP and find top most stack element (the stack pointer is always one above the top most stack element)
+        line += "D=M \n"
+        line += "D=!D \n"
+        line += "@SP \n"
+        line += "A=M-1 \n"
+        line += "M=D \n"
+        return line
+    }
+
+    private String writeNotArithmetic() {
+        String line = "";
+        line += "@SP \n" //select stack pointer (equivalent to R0 or @0)
+        line += "A=M-1 \n"
+        line += "D=M \n" //keep the value in register D
+        line += "D=!D \n"
+        line += "A=-1 \n"
+        line += "D=D-A \n"
+        //replace the top most stack element
+        line += "@SP \n"
+        line += "A=M-1 \n"
+        line += "M=D \n"
+        return line
+    }
+
+    /*   Method operates on operand "x" (which is the top most element in the stack) which is already stored in register 'D' before this method is invoked.
+     *   Method always save the final result/outcome on Register D
+     */
     private String getRegisterForSegment(String memorySegment) {
         String register = memorySegmentToRegisterMap.get(memorySegment)
         if (register == null) throw new RuntimeException("cannot find pointer register for ${memorySegment}")
@@ -210,6 +206,11 @@ class CodeWriter {
         if(line){
             fileOutputStream.write(line.getBytes());
         }
+    }
+
+    void setOutputFile(String outputFileName) {
+        this.close()
+        fileOutputStream = new FileOutputStream(outputFileName)
     }
 
     void close(){
