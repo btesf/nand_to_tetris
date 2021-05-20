@@ -3,9 +3,10 @@ import javax.naming.OperationNotSupportedException
 class CodeWriter {
 
     private static ins_counter = 0;
-    private final Map<String, String> memorySegmentToRegisterMap = ["local" : "LCL", "argument" : "ARG", "this" : "THIS", "that" : "THAT", "static" : "16"]
+    private final Map<String, String> memorySegmentToRegisterMap = ["local" : "LCL", "argument" : "ARG", "this" : "THIS", "that" : "THAT"]
     private final List<String> TEMP_REGISTERS = ["R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"]
     private FileOutputStream fileOutputStream
+    private String vmFileName
 
     public CodeWriter(String outputFileName){
         fileOutputStream = new FileOutputStream(outputFileName)
@@ -38,6 +39,30 @@ class CodeWriter {
         writeLineToFile(pushPopLine)
     }
 
+    void writeLabel(String label){
+
+    }
+
+    void writeGoto(String label){
+
+    }
+
+    void writeIf(String condition){
+
+    }
+
+    void writeReturn(){
+
+    }
+
+    void writeFunction(String functionName, int numLocals){
+
+    }
+
+    void writeCall(String functionName, int numArgs){
+
+    }
+
     private String getPushAsm(String memorySegment, int memoryIndex){
         String line = "";
         if(memorySegment.toLowerCase() == "constant"){
@@ -61,11 +86,13 @@ class CodeWriter {
         String line = ""
         if(memorySegment == "temp"){
             line += ("@" + TEMP_REGISTERS.get(memoryIndex) + " \n")
+        } else if(memorySegment == "static"){ //static variables (symbols) are labelled as <vm_filename>.<index>
+            line += "${vmFileName}.${memoryIndex}"
         } else if(memorySegment == "pointer"){
             if(memoryIndex != 0 && memoryIndex != 1) throw new RuntimeException("Memory index for pointer can only be 0 or 1")
             line += (memoryIndex == 0 ? "@THIS" : "@THAT")
             line += " \n"
-        } else {
+        } else { //will be calculated from an offset found in the segment pointer registers
             String register = getRegisterForSegment(memorySegment)
             line += "@${register} \n"
             line += "D=M \n"
@@ -208,12 +235,13 @@ class CodeWriter {
         }
     }
 
-    void setOutputFile(String outputFileName) {
-        this.close()
-        fileOutputStream = new FileOutputStream(outputFileName)
-    }
-
     void close(){
         fileOutputStream.close()
+    }
+
+    void setFileName(String vmFileName) {
+        //only keep the file name without an extension from the whole URI (e.g. /abc/def/xyz.123 => xyz
+        File file = new File(vmFileName);
+        this.vmFileName = file.getName().replaceAll("\\..*", "");
     }
 }
