@@ -28,7 +28,7 @@ class CodeWriter {
         } else {
             arithmeticAsm = writeTwoOperandArithmetic(operation)
         }
-        writeLineToFile(arithmeticAsm)
+        writeAssemblyLinesToFile(arithmeticAsm)
     }
 
     void writePushPop(CommandType commandType, String memorySegment, int memoryIndex){
@@ -36,19 +36,37 @@ class CodeWriter {
         if(commandType == CommandType.C_PUSH) pushPopLine = getPushAsm(memorySegment, memoryIndex)
         else if(commandType == CommandType.C_POP) pushPopLine = getPopAsm(memorySegment, memoryIndex)
         else throw new IllegalArgumentException("Push/Pop code translation does not apply to ${commandType.toString()}")
-        writeLineToFile(pushPopLine)
+        writeAssemblyLinesToFile(pushPopLine)
     }
 
     void writeLabel(String label){
-
+        String line = "";
+        line += "(${label}) \n";
+        writeAssemblyLinesToFile(line)
     }
 
+    /**
+     * writes @label \n 0;JMP
+     */
     void writeGoto(String label){
-
+        String line = "";
+        line += "@${label} \n";
+        line += "0;JMP \n";
+        writeAssemblyLinesToFile(line)
     }
 
-    void writeIf(String condition){
-
+    /**
+     * Pops the top most element in the stack (which is assumed a result of some condition)
+     * and if result is -1 (all bits 1) it is true, thus jumps to label, otherwise do nothing
+     * @param condition
+     */
+    void writeIf(String label){
+        String line = "@SP \n"; //
+        line += "AM=M-1 \n" //go to the top most stack element and pop the stack
+        line += "D=M \n" //read element
+        line += "@${label} \n";
+        line += "D;JNE \n"; //if the value is non-zero (zero denotes false), jump
+        writeAssemblyLinesToFile(line)
     }
 
     void writeReturn(){
@@ -229,7 +247,7 @@ class CodeWriter {
         return register
     }
 
-    public void writeLineToFile(String line){
+    public void writeAssemblyLinesToFile(String line){
         if(line){
             fileOutputStream.write(line.getBytes());
         }
