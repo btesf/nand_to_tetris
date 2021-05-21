@@ -17,6 +17,7 @@ public class ParserTest {
         sourceLines << "if-goto end";
         sourceLines << "call mult 2";
         sourceLines << "return";
+        sourceLines << "push constant 4001";
         Parser parser = new Parser(sourceLines);
 
         //function fact 2
@@ -53,5 +54,11 @@ public class ParserTest {
             assertEquals(parser.arg1(), "return")
             fail("OperationNotSupportedException should be thrown here")
         } catch(Exception e){}
+
+        //push constant 4001
+        parser.advance()
+        assertEquals(parser.commandType(), CommandType.C_PUSH)
+        assertEquals(parser.arg1(), "constant")
+        assertEquals(parser.arg2(), 4001)
     }
 }

@@ -2,7 +2,7 @@ import javax.naming.OperationNotSupportedException
 
 class CodeWriter {
 
-    private static ins_counter = 0;
+    private int vmFileLabelCounter = 0;
     private final Map<String, String> memorySegmentToRegisterMap = ["local" : "LCL", "argument" : "ARG", "this" : "THIS", "that" : "THAT"]
     private final List<String> TEMP_REGISTERS = ["R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12"]
     private FileOutputStream fileOutputStream
@@ -10,6 +10,8 @@ class CodeWriter {
 
     public CodeWriter(String outputFileName){
         fileOutputStream = new FileOutputStream(outputFileName)
+        vmFileLabelCounter = 0;
+        //writeInit();
     }
 
     /**
@@ -28,7 +30,7 @@ class CodeWriter {
         } else {
             arithmeticAsm = writeTwoOperandArithmetic(operation)
         }
-        writeAssemblyLinesToFile(arithmeticAsm)
+        writeAssemblyLines(arithmeticAsm)
     }
 
     void writePushPop(CommandType commandType, String memorySegment, int memoryIndex){
@@ -36,13 +38,30 @@ class CodeWriter {
         if(commandType == CommandType.C_PUSH) pushPopLine = getPushAsm(memorySegment, memoryIndex)
         else if(commandType == CommandType.C_POP) pushPopLine = getPopAsm(memorySegment, memoryIndex)
         else throw new IllegalArgumentException("Push/Pop code translation does not apply to ${commandType.toString()}")
-        writeAssemblyLinesToFile(pushPopLine)
+        writeAssemblyLines(pushPopLine)
     }
 
     void writeLabel(String label){
         String line = "";
         line += "(${label}) \n";
-        writeAssemblyLinesToFile(line)
+        writeAssemblyLines(line)
+    }
+
+    /*
+     * Writes assembly code that affects the VM initialization, also called bootstrap code. This must be placed at the beginning of the output file
+     */
+    void writeInit(){
+        String line = "";
+        line += "@256 \n"
+        line += "D=A \n"
+        line += "@SP \n"
+        line += "M=D \n"
+        writeAssemblyLines(line)
+        writeCall("Sys.init", 0);
+        line = "(END) \n";
+        line += "@END \n"
+        line += "0;JMP \n"
+        writeAssemblyLines(line)
     }
 
     /**
@@ -52,7 +71,7 @@ class CodeWriter {
         String line = "";
         line += "@${label} \n";
         line += "0;JMP \n";
-        writeAssemblyLinesToFile(line)
+        writeAssemblyLines(line)
     }
 
     /**
@@ -66,19 +85,159 @@ class CodeWriter {
         line += "D=M \n" //read element
         line += "@${label} \n";
         line += "D;JNE \n"; //if the value is non-zero (zero denotes false), jump
-        writeAssemblyLinesToFile(line)
+        writeAssemblyLines(line)
     }
 
-    void writeReturn(){
-
-    }
-
+    /**
+     *    (f)              => Declare a label for the function entry
+     *    repeat k times:   => k 1⁄4 number of local variables
+     *    PUSH 0            => Initialize all of them to 0
+     */
     void writeFunction(String functionName, int numLocals){
-
+        String line = "(${vmFileName}.${functionName}) \n"; //
+        for(int i = 0; i < numLocals; i++){
+            line += getPushAsm("constant", 0)
+        }
+        writeAssemblyLines(line)
     }
 
-    void writeCall(String functionName, int numArgs){
 
+    /** This method does the ff:
+     *
+     * push return-address  => (Using the label declared below)
+     * push LCL             => Save LCL of the calling function
+     * push ARG             => Save ARG of the calling function
+     * push THIS            => Save THIS of the calling function
+     * push THAT            => Save THAT of the calling function
+     * ARG = SP-n-5         => Reposition ARG (n 1⁄4 number of args.)
+     * LCL = SP             => Reposition LCL
+     * goto f               => Transfer control
+     * (return-address)     => Declare a label for the return-address
+     */
+    void writeCall(String functionName, int numArgs){
+        String returnAddress = "${vmFileName}.\$${vmFileLabelCounter++}"
+        String line = "";
+        //next lines: push return address
+        line += pushConstantToStack(returnAddress)
+        line += pushMemoryContentToStack("LCL")
+        line += pushMemoryContentToStack("ARG")
+        line += pushMemoryContentToStack("THIS")
+        line += pushMemoryContentToStack("THAT")
+        //calculate "ARG" value (ARG=SP-n-5)
+        line += "@SP \n"
+        line += "D=M \n" //temporarily hold SP value in D
+        line += "@5 \n"
+        line += "D=D-A \n" //D=@SP-5
+        line += "@${numArgs} \n" //load the numOfArgs value
+        line += "D=D-A \n" //D=D-n (now D becomes = @SP-5-n)
+        line += "@ARG \n"
+        line += "M=D \n" //ARG=D
+        //set LCL = SP
+        line += "@SP \n"
+        line += "D=M \n"
+        line += "@LCL \n"
+        line += "M=D \n" //LCL=D (in general: LCL=@SP)
+        //goto function
+        line += "@${vmFileName}.${functionName} \n"; //load the called function address
+        line += "0;JMP \n";
+        //put the return address label
+        line += "(${returnAddress}) \n"
+        writeAssemblyLines(line)
+    }
+
+    /**
+     * FRAME = LCL         => FRAME is a temporary variable
+     * RET = *(FRAME-5)    => Put the return-address in a temp. var.
+     * *ARG = pop()        => Reposition the return value for the caller
+     * SP = ARG+1          => Restore SP of the caller
+     * THAT = *(FRAME-1)   => Restore THAT of the caller
+     * THIS = *(FRAME-2)   => Restore THIS of the caller
+     * ARG = *(FRAME-3)    => Restore ARG of the caller
+     * LCL = *(FRAME-4)    => Restore LCL of the caller
+     * goto RET            => Goto return-address (in the caller’s code)
+     */
+    void writeReturn(){
+        //FRAME = LCL
+        String line = "@LCL \n";
+        line += "D=M \n" //temporarily keep the @LCL memory value in D
+        line += "@FRAME \n" //create a temporary variable name FRAME
+        line += "M=D \n" //copy D value to FRAME
+        //RET = *(FRAME-5)
+        line += "@FRAME \n" //end of caller function frame is just above current function's FRAME (@FRAME -1)
+        line += "D=M \n" //
+        line += "@5 \n" //
+        line += "A=D-A \n" //D=@FRAME-5
+        line += "D=M \n"
+        line += "@RET \n" //create a temporary variable to save return address
+        line += "M=D \n" //(D contains the return address of the caller function)
+        // *ARG = pop()
+        line += getPopAsm("argument", 0);
+        //SP = ARG+1
+        line += "@ARG \n"
+        line += "D=M+1 \n" //add 1 to the value pointed by ARG => D=@ARG+1
+        line += "@SP \n"
+        line += "M=D \n" //update @SP to D (@ARG+1)
+        //THAT = *(FRAME-1)
+        line += "@FRAME \n"
+        line += "D=M \n" //
+        line += "@1 \n" //
+        line += "A=D-A \n" //D=@FRAME-1
+        line += "D=M \n"
+        line += "@THAT \n"
+        line += "M=D \n"
+        //THIS = *(FRAME-2)
+        line += "@FRAME \n"
+        line += "D=M \n" //
+        line += "@2 \n" //
+        line += "A=D-A \n" //D=@FRAME-2
+        line += "D=M \n"
+        line += "@THIS \n"
+        line += "M=D \n"
+        //ARG = *(FRAME-3)
+        line += "@FRAME \n"
+        line += "D=M \n" //
+        line += "@3 \n" //
+        line += "A=D-A \n" //D=@FRAME-3
+        line += "D=M \n"
+        line += "@ARG \n"
+        line += "M=D \n"
+        //LCL = *(FRAME-4)
+        line += "@FRAME \n"
+        line += "D=M \n" //
+        line += "@4 \n" //
+        line += "A=D-A \n" //D=@FRAME-4
+        line += "D=M \n"
+        line += "@LCL \n"
+        line += "M=D \n"
+        //goto RET
+        line += "@RET \n"
+        line += "A=M \n"
+        line += "0;JMP \n"
+        writeAssemblyLines(line)
+    }
+
+    private String pushConstantToStack(String value) {
+        String line = "";
+        line += "@${value} \n" //set A-register to a value stored in variable 'value'. This in effect selects the memory location located at a value we set to it.
+        line += "D=A \n"; //keep it temporarily in D
+        line += "@SP \n"; //
+        line += "A=M \n"; // go to the top position in stack
+        line += "M=D \n"; // put the D-register value in the stack
+        line += "@SP \n";
+        line += "M=M+1 \n"; // increment SP pointer
+        return line
+    }
+
+    private String pushMemoryContentToStack(String value) {
+        String line = "";
+        line += "@${value} \n" //set A-register to a value stored in variable 'value'. This in effect selects the memory location located at a value we set to it.
+        line += "D=M \n"; //keep it temporarily in D
+        line += "@SP \n"; //
+        line += "A=M \n"; // go to the top position in stack
+        line += "M=D \n"; // put the D-register value in the stack
+        line += "@SP \n";
+        line += "M=M+1 \n"; // increment SP pointer
+        return line
     }
 
     private String getPushAsm(String memorySegment, int memoryIndex){
@@ -149,36 +308,36 @@ class CodeWriter {
                 break;
             case "eq": //set D = -1 if eq or 0 if not
                 arithmeticAsm += "D=D-M \n"
-                arithmeticAsm += "@vm.logic.cmp.true.${ins_counter} \n"
+                arithmeticAsm += "@${vmFileName}.logic.cmp.true.${vmFileLabelCounter} \n"
                 arithmeticAsm += "D;JEQ \n"
                 arithmeticAsm += "D=0 \n"
-                arithmeticAsm += "@vm.logic.cmp.end.${ins_counter} \n"
+                arithmeticAsm += "@${vmFileName}.logic.cmp.end.${vmFileLabelCounter} \n"
                 arithmeticAsm += "0;JEQ \n"
-                arithmeticAsm += "(vm.logic.cmp.true.${ins_counter}) \n"
+                arithmeticAsm += "(${vmFileName}.logic.cmp.true.${vmFileLabelCounter}) \n"
                 arithmeticAsm += "D=-1 \n"
-                arithmeticAsm += "(vm.logic.cmp.end.${ins_counter}) \n"
+                arithmeticAsm += "(${vmFileName}.logic.cmp.end.${vmFileLabelCounter}) \n"
                 break;
             case "gt": //set D = -1 if gt or 0 if not
                 arithmeticAsm += "D=D-M \n"
-                arithmeticAsm += "@vm.logic.cmp.true.${ins_counter} \n"
+                arithmeticAsm += "@${vmFileName}.logic.cmp.true.${vmFileLabelCounter} \n"
                 arithmeticAsm += "D;JGT \n"
                 arithmeticAsm += "D=0 \n"
-                arithmeticAsm += "@vm.logic.cmp.end.${ins_counter} \n"
+                arithmeticAsm += "@${vmFileName}.logic.cmp.end.${vmFileLabelCounter} \n"
                 arithmeticAsm += "0;JEQ \n"
-                arithmeticAsm += "(vm.logic.cmp.true.${ins_counter}) \n"
+                arithmeticAsm += "(${vmFileName}.logic.cmp.true.${vmFileLabelCounter}) \n"
                 arithmeticAsm += "D=-1 \n"
-                arithmeticAsm += "(vm.logic.cmp.end.${ins_counter}) \n"
+                arithmeticAsm += "(${vmFileName}.logic.cmp.end.${vmFileLabelCounter}) \n"
                 break;
             case "lt": //set D = -1 if lt or 0 if not
                 arithmeticAsm += "D=D-M \n"
-                arithmeticAsm += "@vm.logic.cmp.true.${ins_counter} \n"
+                arithmeticAsm += "@${vmFileName}.logic.cmp.true.${vmFileLabelCounter} \n"
                 arithmeticAsm += "D;JLT \n"
                 arithmeticAsm += "D=0 \n"
-                arithmeticAsm += "@vm.logic.cmp.end.${ins_counter} \n"
+                arithmeticAsm += "@v${vmFileName}.m.logic.cmp.end.${vmFileLabelCounter} \n"
                 arithmeticAsm += "0;JEQ \n"
-                arithmeticAsm += "(vm.logic.cmp.true.${ins_counter}) \n"
+                arithmeticAsm += "(${vmFileName}.logic.cmp.true.${vmFileLabelCounter}) \n"
                 arithmeticAsm += "D=-1 \n"
-                arithmeticAsm += "(vm.logic.cmp.end.${ins_counter}) \n"
+                arithmeticAsm += "(${vmFileName}.logic.cmp.end.${vmFileLabelCounter}) \n"
                 break;
             case "and":
                 arithmeticAsm += "D=D&M \n"
@@ -189,7 +348,7 @@ class CodeWriter {
             default:
                 throw new OperationNotSupportedException("Arithmetic operatiorn '${operation}' is not supported. ")
         }
-        ins_counter++;
+        vmFileLabelCounter++;
         return arithmeticAsm
     }
 
@@ -229,8 +388,8 @@ class CodeWriter {
         line += "A=M-1 \n"
         line += "D=M \n" //keep the value in register D
         line += "D=!D \n"
-        line += "A=-1 \n"
-        line += "D=D-A \n"
+        //    line += "A=-1 \n"
+        //    line += "D=D-A \n"
         //replace the top most stack element
         line += "@SP \n"
         line += "A=M-1 \n"
@@ -247,7 +406,7 @@ class CodeWriter {
         return register
     }
 
-    public void writeAssemblyLinesToFile(String line){
+    public void writeAssemblyLines(String line){
         if(line){
             fileOutputStream.write(line.getBytes());
         }
@@ -261,5 +420,6 @@ class CodeWriter {
         //only keep the file name without an extension from the whole URI (e.g. /abc/def/xyz.123 => xyz
         File file = new File(vmFileName);
         this.vmFileName = file.getName().replaceAll("\\..*", "");
+        this.vmFileLabelCounter = 0;
     }
 }
