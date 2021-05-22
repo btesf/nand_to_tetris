@@ -11,7 +11,7 @@ class CodeWriter {
     public CodeWriter(String outputFileName){
         fileOutputStream = new FileOutputStream(outputFileName)
         vmFileLabelCounter = 0;
-        //writeInit();
+        writeInit();
     }
 
     /**
@@ -30,7 +30,7 @@ class CodeWriter {
         } else {
             arithmeticAsm = writeTwoOperandArithmetic(operation)
         }
-        writeAssemblyLines(arithmeticAsm)
+        writeLinesToFile(arithmeticAsm)
     }
 
     void writePushPop(CommandType commandType, String memorySegment, int memoryIndex){
@@ -38,13 +38,13 @@ class CodeWriter {
         if(commandType == CommandType.C_PUSH) pushPopLine = getPushAsm(memorySegment, memoryIndex)
         else if(commandType == CommandType.C_POP) pushPopLine = getPopAsm(memorySegment, memoryIndex)
         else throw new IllegalArgumentException("Push/Pop code translation does not apply to ${commandType.toString()}")
-        writeAssemblyLines(pushPopLine)
+        writeLinesToFile(pushPopLine)
     }
 
     void writeLabel(String label){
         String line = "";
         line += "(${label}) \n";
-        writeAssemblyLines(line)
+        writeLinesToFile(line)
     }
 
     /*
@@ -56,12 +56,9 @@ class CodeWriter {
         line += "D=A \n"
         line += "@SP \n"
         line += "M=D \n"
-        writeAssemblyLines(line)
+        writeLinesToFile(line)
+        this.vmFileName = "Sys"
         writeCall("Sys.init", 0);
-        line = "(END) \n";
-        line += "@END \n"
-        line += "0;JMP \n"
-        writeAssemblyLines(line)
     }
 
     /**
@@ -71,7 +68,7 @@ class CodeWriter {
         String line = "";
         line += "@${label} \n";
         line += "0;JMP \n";
-        writeAssemblyLines(line)
+        writeLinesToFile(line)
     }
 
     /**
@@ -85,7 +82,7 @@ class CodeWriter {
         line += "D=M \n" //read element
         line += "@${label} \n";
         line += "D;JNE \n"; //if the value is non-zero (zero denotes false), jump
-        writeAssemblyLines(line)
+        writeLinesToFile(line)
     }
 
     /**
@@ -94,11 +91,11 @@ class CodeWriter {
      *    PUSH 0            => Initialize all of them to 0
      */
     void writeFunction(String functionName, int numLocals){
-        String line = "(${vmFileName}.${functionName}) \n"; //
+        String line = "(${functionName}) \n"; //
         for(int i = 0; i < numLocals; i++){
             line += getPushAsm("constant", 0)
         }
-        writeAssemblyLines(line)
+        writeLinesToFile(line)
     }
 
 
@@ -138,11 +135,11 @@ class CodeWriter {
         line += "@LCL \n"
         line += "M=D \n" //LCL=D (in general: LCL=@SP)
         //goto function
-        line += "@${vmFileName}.${functionName} \n"; //load the called function address
+        line += "@${functionName} \n"; //load the called function address
         line += "0;JMP \n";
         //put the return address label
         line += "(${returnAddress}) \n"
-        writeAssemblyLines(line)
+        writeLinesToFile(line)
     }
 
     /**
@@ -213,7 +210,7 @@ class CodeWriter {
         line += "@RET \n"
         line += "A=M \n"
         line += "0;JMP \n"
-        writeAssemblyLines(line)
+        writeLinesToFile(line)
     }
 
     private String pushConstantToStack(String value) {
@@ -264,7 +261,7 @@ class CodeWriter {
         if(memorySegment == "temp"){
             line += ("@" + TEMP_REGISTERS.get(memoryIndex) + " \n")
         } else if(memorySegment == "static"){ //static variables (symbols) are labelled as <vm_filename>.<index>
-            line += "${vmFileName}.${memoryIndex}"
+            line += "@${vmFileName}.${memoryIndex} \n"
         } else if(memorySegment == "pointer"){
             if(memoryIndex != 0 && memoryIndex != 1) throw new RuntimeException("Memory index for pointer can only be 0 or 1")
             line += (memoryIndex == 0 ? "@THIS" : "@THAT")
@@ -333,7 +330,7 @@ class CodeWriter {
                 arithmeticAsm += "@${vmFileName}.logic.cmp.true.${vmFileLabelCounter} \n"
                 arithmeticAsm += "D;JLT \n"
                 arithmeticAsm += "D=0 \n"
-                arithmeticAsm += "@v${vmFileName}.m.logic.cmp.end.${vmFileLabelCounter} \n"
+                arithmeticAsm += "@${vmFileName}.logic.cmp.end.${vmFileLabelCounter} \n"
                 arithmeticAsm += "0;JEQ \n"
                 arithmeticAsm += "(${vmFileName}.logic.cmp.true.${vmFileLabelCounter}) \n"
                 arithmeticAsm += "D=-1 \n"
@@ -406,7 +403,7 @@ class CodeWriter {
         return register
     }
 
-    public void writeAssemblyLines(String line){
+    public void writeLinesToFile(String line){
         if(line){
             fileOutputStream.write(line.getBytes());
         }
