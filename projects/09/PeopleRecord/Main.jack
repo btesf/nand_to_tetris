@@ -1,0 +1,24 @@
+class Main {
+    function void main() {
+        //var PeopleRecord record;
+        //let record = PeopleRecord.new();
+        //do record.run();
+        //do record.dispose();
+        var RecordRunner runner;
+        let runner = RecordRunner.new();
+        do runner.run();
+        return;
+    }
+
+    function void readKeyboard(){
+        do Output.moveCursor(1, 1);
+        do Keyboard.readLine("Please read line:");
+
+        do Output.moveCursor(10, 1);
+        do Keyboard.readLine("Please read line:");
+
+        do Output.moveCursor(20, 1);
+        do Keyboard.readLine("Please read line:");
+        return;
+    }
+}

@@ -1,0 +1,59 @@
+class Student{
+    field String name;
+    field String age;
+    field String sex;
+    field int id;
+
+    constructor Student new(int i, String n, String a, String s){
+        let id = i;
+        let name = n;
+        let age = a;
+        let sex = s;
+        return this;
+    }
+
+    method void print(){
+        do Output.printInt((id+1));       
+        do Output.printString(name);           
+        do Output.printString("   ");
+        do Output.printString(age);
+        do Output.printString("   ");
+        do Output.printString(sex);
+        do Output.println();
+        return;
+    }
+
+    method void setName(String n){
+        let name = n;
+        return;
+    }
+
+    method void setSex(String n){
+        let sex = n;
+        return;
+    }
+
+    method void setAge(String n){
+        let age = n;
+        return;
+    }
+
+    method int getId(){
+        return id;
+    }
+
+    method int isEmpty(){
+        var boolean isEmpty;        
+        var String emptyStr;
+        let isEmpty = false;
+        if((name.length() = 0) & (age.length() = 0) & (sex.length() = 0)){
+            let isEmpty = true;
+        }
+        return isEmpty;
+    }
+
+    method void dispose() {
+      do Memory.deAlloc(this);
+      return;
+   }
+}
