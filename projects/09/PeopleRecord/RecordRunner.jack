@@ -16,6 +16,9 @@ class RecordRunner {
         let students = Array.new(ARRAY_SIZE);
         //instantiate students
         do intantiateStudents();
+        //
+        do displaySavedProfiles();
+        do showProgramInstructions();
         return this;
     }
 
@@ -27,17 +30,17 @@ class RecordRunner {
 
       while (~exit) {
          let key = Keyboard.keyPressed();
-         if (key = 140) {
+         if (key = 140) { //escpape
             let exit = true;
          }
-         if (key = 131) {
+         if (key = 131) { //up arrow
              do programMode("Insert");
              if(arrayIndex < ARRAY_SIZE){
                 do receiveStudentInformation();       
              }             
              do programMode("");       
          } 
-         if( key = 139){
+         if( key = 129){ //backspace
              do programMode("Delete");
              do deleteRecord();
              do programMode("");       
@@ -47,12 +50,13 @@ class RecordRunner {
     }
 
     method void receiveStudentInformation(){
-        var int counter;
+        var int counter, emptySlotIndex;
         var String str;    
-        var Student student; 
-        let student = students[arrayIndex];
+        var Student student;     
         let str = String.new(40); 
         let counter = 0;    
+        let arrayIndex = getEmptySlot(); 
+        let student = students[arrayIndex];
         while (counter < 3){
             do clearLineFromCursor(3, 0);    
             let str = Keyboard.readLine(label[counter]);
@@ -70,19 +74,15 @@ class RecordRunner {
             }
             if(counter = 2){
                 do student.setSex(str);
-                //save new student when all fields are saved
-                let arrayIndex = (arrayIndex + 1);                                           
-                if(~(arrayIndex < ARRAY_SIZE)){        
-                    let arrayIndex = (ARRAY_SIZE - 1);          
-                }              
-                 do displaySavedProfiles();  
+                //save new student when all fields are saved                                                                        
+                do displaySavedProfiles();  
+                do clearLineFromCursor(3, 0); //clear input prompt
             }        
             let counter = (counter + 1);     
             let str = "";  
         }
         return;
     }
-
 
     method void deleteRecord(){
         var int id, counter;
@@ -143,6 +143,14 @@ class RecordRunner {
         return;
     }
 
+    method void showProgramInstructions(){
+        do clearLineFromCursor(21, 0);
+        do Output.printString("===============================================================");
+        do Output.println();
+        do Output.printString("Up arrow: Insert mode, Backspace: Delete mode, ESC: exit");
+        return;
+    }
+
     method void programMode(String mode){
         do clearLineFromCursor(0, 0); 
         do Output.printString("Mode: ");
@@ -151,17 +159,24 @@ class RecordRunner {
     }
 
     method void displaySavedProfiles(){
-        var int counter, total;
+        var int counter, total, row, serialNumber;
         var int offset;
         var Student std;
-        let counter = 0;
-        let offset = 10;
-         
-        do Output.moveCursor(10, 0);
+        
+        do Output.moveCursor(8, 0);
+        do Output.printString("---------------------SAVED-RECORDS-----------------------------"); 
+        do Output.println();
+        do displayFormattedRow(10, -1, "Name", "Sex", "Age");
+        do Output.println();
+        let counter = 0;        
+        let offset = 11;
+        do Output.moveCursor(offset, 0);
         while (counter < ARRAY_SIZE){
             do clearLineFromCursor((counter + offset), 0);
             let std = students[counter];
-            do std.print();
+            let row = counter + offset;
+            let serialNumber = std.getId()+1;
+            do displayFormattedRow(row, serialNumber, std.getName(), std.getSex(), std.getAge());    
             let counter = (counter + 1);
         } 
         let total = countNonEmpty();
@@ -200,5 +215,45 @@ class RecordRunner {
             let index = index + 1;
         }
         return records;
+    }
+
+    method int getEmptySlot(){
+        var int index;
+        var boolean isEmpty;
+        var Student student;
+        let index = 0;
+        while (index < ARRAY_SIZE){
+            let student = students[index];
+            let isEmpty = student.isEmpty();
+            if(isEmpty){
+                return index;
+            }
+            let index = index + 1;
+        }
+        return (ARRAY_SIZE - 1);
+    }
+
+    //methods displays some like below
+    // 1 | some_name     | 45 | M |
+    method void displayFormattedRow(int row, int number, String name, String age, String sex){
+        do Output.moveCursor(row, 0);
+        if(number = -1){
+            do Output.printString("");  
+        } else {
+            do Output.printInt(number); 
+        }    
+        do Output.moveCursor(row, 2);
+        do Output.printString("| ");  
+        do Output.printString(name);
+        do Output.moveCursor(row, 30); 
+        do Output.printString("| ");   
+        do Output.printString(age);           
+        do Output.moveCursor(row, 36); 
+        do Output.printString("| ");  
+        do Output.printString(sex);
+        do Output.moveCursor(row, 42); 
+        do Output.printString("| "); 
+        do Output.println();
+        return;
     }
 }

@@ -12,17 +12,6 @@ class Student{
         return this;
     }
 
-    method void print(){
-        do Output.printInt((id+1));       
-        do Output.printString(name);           
-        do Output.printString("   ");
-        do Output.printString(age);
-        do Output.printString("   ");
-        do Output.printString(sex);
-        do Output.println();
-        return;
-    }
-
     method void setName(String n){
         let name = n;
         return;
@@ -40,6 +29,18 @@ class Student{
 
     method int getId(){
         return id;
+    }
+
+    method String getName(){
+        return name;
+    }
+    
+    method String getAge(){
+        return age;
+    }
+
+    method String getSex(){
+        return sex;
     }
 
     method int isEmpty(){
