@@ -1,3 +1,5 @@
+package com.bereket.compiler
+
 class Test {
 
     public static void main(String[] args) {

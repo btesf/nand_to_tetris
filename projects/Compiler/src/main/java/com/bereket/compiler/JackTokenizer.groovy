@@ -1,3 +1,5 @@
+package com.bereket.compiler
+
 import org.apache.commons.lang3.StringUtils
 
 class JackTokenizer {
@@ -64,27 +66,6 @@ class JackTokenizer {
         return TokenType.IDENTIFIER
     }
 
-    String stringVal(){
-        String line = getCurrentLine();
-    }
-
-
-    String keyWord(){
-        String line = getCurrentLine();
-    }
-
-    String identifier(){
-        String line = getCurrentLine();
-    }
-
-    int intVal(){
-        String line = getCurrentLine();
-    }
-
-    char symbol(){
-        String line = getCurrentLine();
-    }
-
     private void writeTokensToFile(){
         StringBuilder builder = new StringBuilder("<tokens>\n")
         for(TokenInformation tokenInformation: tokenizedTokens){
@@ -137,19 +118,6 @@ class JackTokenizer {
             }
         }
         return tokens;
-    }
-
-    private class TokenInformation{
-        String token
-        TokenType tokenType
-        TokenInformation(String token, TokenType tokenType){
-            if(tokenType == TokenType.STRING_CONST){
-                if(token.length() < 2) throw new RuntimeException("String token format is not valid : " + token);
-                token = token.substring(1, token.length()-1) //remove the leading and trailing double quotes
-            }
-            this.token = token
-            this.tokenType = tokenType
-        }
     }
 
     public void close(){

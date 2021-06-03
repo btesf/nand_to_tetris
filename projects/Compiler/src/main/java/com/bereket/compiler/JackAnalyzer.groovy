@@ -1,3 +1,5 @@
+package com.bereket.compiler
+
 import groovy.io.FileType
 
 class JackAnalyzer {
@@ -22,7 +24,7 @@ class JackAnalyzer {
             tokenizer.tokenize()
             String codeAnalyzerDestination = getDestinationFile(sourceFile);
             CompilationEngine compilationEngine = new CompilationEngine(jackTokenizerDestination, codeAnalyzerDestination)
-
+            compilationEngine.compileFile();
             if(compilationEngine != null) compilationEngine.close()
         }
 
