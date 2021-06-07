@@ -73,7 +73,7 @@ class JackTokenizer {
             builder.append(String.format("<%s>%s</%s>\n", tagName, tokenInformation.token, tagName))
         }
         builder.append("</tokens>")
-        fileOutputStream.write(builder.toString().getBytes())
+        if(fileOutputStream) fileOutputStream.write(builder.toString().getBytes())
     }
 
     private String getCurrentLine(){
@@ -120,7 +120,11 @@ class JackTokenizer {
         return tokens;
     }
 
+    List<TokenInformation> getTokenizedTokens() {
+        return tokenizedTokens
+    }
+
     public void close(){
-        fileOutputStream.close()
+        if(fileOutputStream) fileOutputStream.close()
     }
 }

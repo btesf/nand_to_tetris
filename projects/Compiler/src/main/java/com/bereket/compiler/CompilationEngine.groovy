@@ -151,10 +151,6 @@ class CompilationEngine {
         programStructure.add("</subroutineBody>")
     }
 
-    public void compileSubroutine(){
-
-    }
-
     //((type varName) (',' type varName)*)?
     public void compileParameterList(){
         programStructure.add("<parameterList>")
@@ -227,6 +223,7 @@ class CompilationEngine {
     public void compileStatements(){
         TokenInformation tokenInformation = getCurrentToken()
         if(tokenInformation == null || tokenInformation.tokenType != TokenType.KEYWORD) return;
+        if(!(tokenInformation.token in ["let", "if", "while", "do", "return"])) return;
         switch(tokenInformation.token){
             case "let":
                 compileLet();
@@ -245,6 +242,7 @@ class CompilationEngine {
                 break;
             default: return;
         }
+        compileStatements();
     }
 
     //'do' compileDo ';'
@@ -254,7 +252,7 @@ class CompilationEngine {
         programStructure.add("<doStatement>")
         tokenInformation = getCurrentTokenAndAdvance()
         programStructure.add(createXmlNode("keyword", tokenInformation.token)) //do
-        compileSubroutine()
+        compileSubroutineCall()
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.token != ";")
             throw new RuntimeException("do expression should terminate with ';'")
@@ -398,22 +396,13 @@ class CompilationEngine {
             programStructure.add(createXmlNode(tokenInformation.tokenType.tagName, tokenInformation.token))
         } else if (tokenInformation.tokenType == TokenType.IDENTIFIER){ //varName | varName '[' expression ']' | subroutineCall | '(' expression ')'
             programStructure.add(createXmlNode(tokenInformation.tokenType.tagName, tokenInformation.token)) //varName
-            tokenInformation = getCurrentToken()
-            if(tokenInformation != null){
-                if(tokenInformation.token == "["){ // '[' expression ']'
-                    tokenInformation = getCurrentTokenAndAdvance()
-                    programStructure.add(createXmlNode("symbol", tokenInformation.token))
-                    compileExpression()
-                    tokenInformation = getCurrentToken()
-                    if(tokenInformation == null || tokenInformation.token != "]") throw new RuntimeException("No closing ']' found. Got : ${tokenInformation.token}")
-                    tokenInformation = getCurrentTokenAndAdvance()
-                    programStructure.add(createXmlNode("symbol", tokenInformation.token))
-                } else if(tokenInformation.token == "("){ //subroutineName '(' expressionList ')'
-                    compileSubroutineCallExpressionList()
-                }
+            TokenInformation currentToken = getCurrentToken()
+            if(currentToken && currentToken.token == "["){
+                compileArrayExpression()
+            } else if(currentToken && (currentToken.token == "(" || currentToken.token == ".")){
+                compileSubroutineCall()
             }
-        }
-       else if (tokenInformation.tokenType == TokenType.SYMBOL) {
+        } else if (tokenInformation.tokenType == TokenType.SYMBOL) {
             //it can be: '(' expression ')'  or unaryOp term or <className>.subroutineName(expressionList)
             if (tokenInformation.token == "(") {
                 programStructure.add(createXmlNode("symbol", tokenInformation.token))
@@ -422,27 +411,42 @@ class CompilationEngine {
                 if (tokenInformation == null || tokenInformation.token != ")") throw new RuntimeException("Expression group should be terminated by  ')'")
                 tokenInformation = getCurrentTokenAndAdvance()
                 programStructure.add(createXmlNode("symbol", tokenInformation.token))
-            } else if (tokenInformation.token == '.') { // '.' subroutineName '(' expressionList ')'
-                programStructure.add(createXmlNode("symbol", tokenInformation.token))
-                compileSubroutineCallExpressionList()
             } else if (UNARY_OPS.contains(tokenInformation.token)) { //unary op term
                 if(!UNARY_OPS.contains(tokenInformation.token)) throw new RuntimeException("Unary operator is not found: Got ${tokenInformation.token}")
                 programStructure.add(createXmlNode("symbol", tokenInformation.token))
                 compileTerm()
             }
-        }// else throw new RuntimeException("Unknown term compilation path.")
+        } else throw new RuntimeException("Unknown term compilation path.")
 
         programStructure.add("</term>")
     }
 
-    public void compileSubroutineCallExpressionList(){
-        TokenInformation tokenInformation = getCurrentToken()
-        if(tokenInformation.token == "("){
-            tokenInformation = getCurrentTokenAndAdvance()
+    void compileSubroutineCall(){
+        TokenInformation tokenInformation = getCurrentTokenAndAdvance()
+        if (tokenInformation.token == "(") { // subRoutine( expressionList )
             programStructure.add(createXmlNode("symbol", tokenInformation.token))
             compileExpressionList()
             tokenInformation = getCurrentTokenAndAdvance()
-            if(tokenInformation.token != ")") throw new RuntimeException("Expression group should be terminated by  ')'")
+            if (tokenInformation == null || tokenInformation.token != ")") throw new RuntimeException("Subroutine call should be terminated by  ')'")
+            programStructure.add(createXmlNode("symbol", tokenInformation.token))
+        } else if (tokenInformation.token == "."){ // [className].[subRoutine ( expressioinList ) ] <= only the dot part
+            programStructure.add(createXmlNode("symbol", tokenInformation.token)) // write .
+            compileSubroutineCall()
+        } else if(tokenInformation.tokenType == TokenType.IDENTIFIER){ //it only comes here in a recursive call where the previous token was "." ; [className.] subRoutine [( expressioinList ) ]  <= only the subRoutine part
+            programStructure.add(createXmlNode("identifier", tokenInformation.token))
+            compileSubroutineCall()
+        } else throw new RuntimeException("Invalid subroutine call path")
+    }
+
+    void compileArrayExpression() {
+        TokenInformation tokenInformation = getCurrentToken()
+        if (tokenInformation.token == "[") { // '[' expression ']'
+            tokenInformation = getCurrentTokenAndAdvance()
+            programStructure.add(createXmlNode("symbol", tokenInformation.token))
+            compileExpression()
+            tokenInformation = getCurrentToken()
+            if (tokenInformation == null || tokenInformation.token != "]") throw new RuntimeException("No closing ']' found. Got : ${tokenInformation.token}")
+            tokenInformation = getCurrentTokenAndAdvance()
             programStructure.add(createXmlNode("symbol", tokenInformation.token))
         }
     }

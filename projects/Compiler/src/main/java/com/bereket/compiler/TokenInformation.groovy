@@ -8,8 +8,7 @@ public class TokenInformation {
 
     TokenInformation(String token, TokenType tokenType){
         if(tokenType == TokenType.STRING_CONST){
-            if(token.length() < 2) throw new RuntimeException("String token format is not valid : " + token);
-            //token = token.substring(1, token.length() -1) //remove the leading and trailing double quotes
+            token = token.replaceAll("^\"|\"\$", "");//remove the leading double quote (")
         } else if(tokenType == TokenType.SYMBOL){
             token = getEncodedString(token)
         }
@@ -27,5 +26,13 @@ public class TokenInformation {
     @Override
     String toString() {
         return "${token} : ${tokenType}"
+    }
+
+    @Override
+    boolean equals(Object obj) {
+        if(!(obj instanceof TokenInformation)) return false;
+        TokenInformation tokenInformation = (TokenInformation) obj;
+        if(tokenInformation.token == this.token && tokenInformation.tokenType == this.tokenType) return true;
+        return false;
     }
 }

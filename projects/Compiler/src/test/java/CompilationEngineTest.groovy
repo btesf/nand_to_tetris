@@ -414,7 +414,10 @@ public class CompilationEngineTest {
     public void testCompileDo(){
         String xml = '''
         <tokens>
-            <keyword> do </keyword>          
+            <keyword> do </keyword>   
+            <identifier>method1</identifier>       
+            <symbol>(</symbol>       
+            <symbol>)</symbol>       
             <symbol> ; </symbol>
         </tokens>
         '''
@@ -425,7 +428,16 @@ public class CompilationEngineTest {
         CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
         compilationEngine.compileDo()
         List<String> programStructure = compilationEngine.getProgramStructure()
-        List<String> expected = Arrays.asList("<doStatement>", "<keyword>do</keyword>", "<symbol>;</symbol>", "</doStatement>")
+        List<String> expected = Arrays.asList(
+                "<doStatement>",
+                "<keyword>do</keyword>",
+                "<identifier>method1</identifier>",
+                "<symbol>(</symbol>",
+                "<expressionList>",
+                "</expressionList>",
+                "<symbol>)</symbol>",
+                "<symbol>;</symbol>",
+                "</doStatement>")
 
         Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
     }
@@ -888,32 +900,168 @@ public class CompilationEngineTest {
         Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
     }
 
+    @Test
+    public void testCompileArray(){
+
+        String xml = '''
+        <tokens>        
+            <symbol> [ </symbol> 
+            <integerConstant> 5 </integerConstant>   
+            <symbol> ] </symbol>         
+        </tokens>
+        '''
+        def parsedXml = new XmlSlurper().parseText(xml)
+        CompilationEngine compilationEngine = new CompilationEngine();
+        List<TokenInformation> tokenInformation = new ArrayList<>()
+        compilationEngine.setTokenizedTokens(tokenInformation)
+        CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
+        compilationEngine.compileArrayExpression()
+        List<String> programStructure = compilationEngine.getProgramStructure()
+        List<String> expected = Arrays.asList(
+                "<symbol>[</symbol>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>5</integerConstant>",
+                "</term>",
+                "</expression>",
+                "<symbol>]</symbol>")
+
+        Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
+    }
+
+    @Test
+    public void testCompileSubRoutineCall(){
+
+        //TEST: subroutineCall(5)
+        String xml = '''
+        <tokens>          
+            <symbol> ( </symbol> 
+            <integerConstant> 5 </integerConstant>   
+            <symbol> ) </symbol>         
+        </tokens>
+        '''
+        def parsedXml = new XmlSlurper().parseText(xml)
+        CompilationEngine compilationEngine = new CompilationEngine();
+        List<TokenInformation> tokenInformation = new ArrayList<>()
+        compilationEngine.setTokenizedTokens(tokenInformation)
+        CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
+        compilationEngine.compileSubroutineCall()
+        List<String> programStructure = compilationEngine.getProgramStructure()
+        List<String> expected = Arrays.asList(
+                "<symbol>(</symbol>",
+                "<expressionList>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>5</integerConstant>",
+                "</term>",
+                "</expression>",
+                "</expressionList>",
+                "<symbol>)</symbol>")
+
+        Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
+
+        //TEST className.subRoutine(5)
+        xml = '''
+        <tokens>           
+            <symbol> . </symbol>         
+            <identifier> subRoutine </identifier>          
+            <symbol> ( </symbol> 
+            <integerConstant> 5 </integerConstant>   
+            <symbol> ) </symbol>         
+        </tokens>
+        '''
+        parsedXml = new XmlSlurper().parseText(xml)
+        compilationEngine = new CompilationEngine();
+        tokenInformation = new ArrayList<>()
+        compilationEngine.setTokenizedTokens(tokenInformation)
+        CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
+        compilationEngine.compileSubroutineCall()
+        programStructure = compilationEngine.getProgramStructure()
+        expected = Arrays.asList(
+                "<symbol>.</symbol>",
+                "<identifier>subRoutine</identifier>",
+                "<symbol>(</symbol>",
+                "<expressionList>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>5</integerConstant>",
+                "</term>",
+                "</expression>",
+                "</expressionList>",
+                "<symbol>)</symbol>")
+
+        Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
+    }
+
     @org.junit.jupiter.api.Test
     public void testAll(){
 
+        /**
+                class Square {
+                    field Square square;
+                    field int direction;
+                    static boolean abc, xyz;
+                    static char def;
+
+                    constructor void method1(){
+                        let a = 5;
+                        do ClassName.MethodName(2 + "abc def");
+                    }
+                }
+         */
         String xml = '''
         <tokens>               
             <keyword> class </keyword>
             <identifier> Square </identifier>
             <symbol> { </symbol>
+            
             <keyword> field </keyword>
             <identifier> Square </identifier>
             <identifier> square </identifier>
             <symbol> ; </symbol>
+            
             <keyword> field </keyword>
             <keyword> int </keyword>
             <identifier> direction </identifier>
             <symbol> ; </symbol>
+            
             <keyword> static </keyword>
             <keyword> boolean </keyword>
             <identifier> abc </identifier>
             <symbol> , </symbol>
             <identifier> xyz </identifier>
             <symbol> ; </symbol>
+            
             <keyword> static </keyword>
             <keyword> char </keyword>
             <identifier> def </identifier>
+            <symbol> ; </symbol>           
+            
+            <keyword> constructor </keyword>
+            <keyword> void </keyword>
+            <identifier> method1 </identifier>
+            <symbol> ( </symbol>
+            <symbol> ) </symbol>
+            <symbol> { </symbol>
+            
+            <keyword>let</keyword>
+            <identifier>a</identifier>
+            <symbol> = </symbol>
+            <integerConstant>5</integerConstant>
             <symbol> ; </symbol>
+          
+            <keyword> do </keyword>
+            <identifier> ClassName </identifier>
+            <symbol> . </symbol>
+            <identifier> MethodName </identifier>
+            <symbol> ( </symbol>
+            <integerConstant> 2 </integerConstant>
+            <symbol> + </symbol>
+            <stringConstant> abc def </stringConstant>
+            <symbol> ) </symbol>
+            <symbol> ; </symbol> 
+            
+            <symbol> } </symbol>                     
             <symbol> } </symbol>                                                              
         </tokens>
         '''
@@ -925,14 +1073,85 @@ public class CompilationEngineTest {
         CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
         compilationEngine.compileClass()
         List<String> programStructure = compilationEngine.getProgramStructure()
-        List<String> expected = Arrays.asList("<class>", "<keyword>class</keyword>", "<identifier>Square</identifier>", "<symbol>{</symbol>",
-                "<classVarDec>", "<keyword>field</keyword>", "<identifier>Square</identifier>", "<identifier>square</identifier>",
-                "<symbol>;</symbol>", "</classVarDec>", "<classVarDec>", "<keyword>field</keyword>", "<keyword>int</keyword>", "<identifier>direction</identifier>",
-                "<symbol>;</symbol>", "</classVarDec>", "<classVarDec>", "<keyword>static</keyword>", "<keyword>boolean</keyword>",
-                "<identifier>abc</identifier>", "<symbol>,</symbol>", "<identifier>xyz</identifier>", "<symbol>;</symbol>", "</classVarDec>",
-                "<classVarDec>", "<keyword>static</keyword>", "<keyword>char</keyword>",
-                "<identifier>def</identifier>", "<symbol>;</symbol>", "</classVarDec>",
-                "<symbol>}</symbol>", "</class>")
+        List<String> expected = Arrays.asList(
+                "<class>",
+                "<keyword>class</keyword>",
+                "<identifier>Square</identifier>",
+                "<symbol>{</symbol>",
+                "<classVarDec>", "<keyword>field</keyword>",
+                "<identifier>Square</identifier>",
+                "<identifier>square</identifier>",
+                "<symbol>;</symbol>",
+                "</classVarDec>",
+                "<classVarDec>",
+                "<keyword>field</keyword>",
+                "<keyword>int</keyword>",
+                "<identifier>direction</identifier>",
+                "<symbol>;</symbol>",
+                "</classVarDec>", "<classVarDec>",
+                "<keyword>static</keyword>",
+                "<keyword>boolean</keyword>",
+                "<identifier>abc</identifier>",
+                "<symbol>,</symbol>",
+                "<identifier>xyz</identifier>",
+                "<symbol>;</symbol>",
+                "</classVarDec>",
+                "<classVarDec>",
+                "<keyword>static</keyword>",
+                "<keyword>char</keyword>",
+                "<identifier>def</identifier>",
+                "<symbol>;</symbol>",
+                "</classVarDec>",
+
+                "<subroutineDec>",
+                "<keyword>constructor</keyword>",
+                "<keyword>void</keyword>",
+                "<identifier>method1</identifier>",
+                "<symbol>(</symbol>",
+                "<parameterList>",
+                "</parameterList>",
+                "<symbol>)</symbol>",
+                "<subroutineBody>",
+                "<symbol>{</symbol>",
+                "<letStatement>",
+                "<keyword>let</keyword>",
+                "<identifier>a</identifier>",
+                "<symbol>=</symbol>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>5</integerConstant>",
+                "</term>",
+                "</expression>",
+                "<symbol>;</symbol>",
+                "</letStatement>",
+
+                "<doStatement>",
+                "<keyword>do</keyword>",
+                "<identifier>ClassName</identifier>",
+                "<symbol>.</symbol>",
+                "<identifier>MethodName</identifier>",
+                "<symbol>(</symbol>",
+                "<expressionList>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>2</integerConstant>",
+                "</term>",
+                "<symbol>+</symbol>",
+                "<term>",
+                "<stringConstant>abc def</stringConstant>",
+                "</term>",
+                "</expression>",
+                "</expressionList>",
+                "<symbol>)</symbol>",
+                "<symbol>;</symbol>",
+                "</doStatement>",
+
+                "<symbol>}</symbol>",
+                "</subroutineBody>",
+                "</subroutineDec>",
+
+                "<symbol>}</symbol>",
+                "</class>")
         Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
 
     }
