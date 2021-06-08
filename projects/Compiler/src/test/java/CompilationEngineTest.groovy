@@ -1004,7 +1004,7 @@ public class CompilationEngineTest {
                     static char def;
 
                     constructor void method1(){
-                        let a = 5;
+                        let a = Square.new(0, 0, 30);
                         do ClassName.MethodName(2 + "abc def");
                     }
                 }
@@ -1047,7 +1047,16 @@ public class CompilationEngineTest {
             <keyword>let</keyword>
             <identifier>a</identifier>
             <symbol> = </symbol>
-            <integerConstant>5</integerConstant>
+            <identifier>Square</identifier>
+            <symbol>.</symbol>
+            <keyword>new</keyword>
+            <symbol> ( </symbol>
+            <integerConstant> 0 </integerConstant>
+            <symbol> , </symbol>
+            <integerConstant> 0 </integerConstant>
+            <symbol> , </symbol>
+            <integerConstant> 30 </integerConstant>
+            <symbol> ) </symbol>
             <symbol> ; </symbol>
           
             <keyword> do </keyword>
@@ -1113,13 +1122,37 @@ public class CompilationEngineTest {
                 "<symbol>)</symbol>",
                 "<subroutineBody>",
                 "<symbol>{</symbol>",
+
                 "<letStatement>",
                 "<keyword>let</keyword>",
                 "<identifier>a</identifier>",
                 "<symbol>=</symbol>",
                 "<expression>",
                 "<term>",
-                "<integerConstant>5</integerConstant>",
+                "<identifier>Square</identifier>",
+                "<symbol>.</symbol>",
+                "<keyword>new</keyword>",
+                "<symbol>(</symbol>",
+                "<expressionList>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>0</integerConstant>",
+                "</term>",
+                "</expression>",
+                "<symbol>,</symbol>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>0</integerConstant>",
+                "</term>",
+                "</expression>",
+                "<symbol>,</symbol>",
+                "<expression>",
+                "<term>",
+                "<integerConstant>30</integerConstant>",
+                "</term>",
+                "</expression>",
+                "</expressionList>",
+                "<symbol>)</symbol>",
                 "</term>",
                 "</expression>",
                 "<symbol>;</symbol>",

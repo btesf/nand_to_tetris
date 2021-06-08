@@ -25,13 +25,7 @@ class CompilationEngine {
     void compileFile(){
         def rootNode = new XmlSlurper().parseText(xmlSource)
         readXmlToTokenInformation(rootNode, tokenizedTokens)
-
-
         compileClass();
-
-        for(TokenInformation tokenInformation: tokenizedTokens){
-            println tokenInformation.toString()
-        }
     }
 
     static void readXmlToTokenInformation(def tokens, List<TokenInformation> tokenizedTokens){
@@ -160,6 +154,8 @@ class CompilationEngine {
             while(tokenInformation != null && tokenInformation.token == ","){
                 programStructure.add(createXmlNode("symbol", tokenInformation.token))
                 if(readParameter()){
+                    if(getCurrentToken().token == ")")
+                        break;
                     tokenInformation = getCurrentTokenAndAdvance()
                 }
             }
@@ -435,7 +431,10 @@ class CompilationEngine {
         } else if(tokenInformation.tokenType == TokenType.IDENTIFIER){ //it only comes here in a recursive call where the previous token was "." ; [className.] subRoutine [( expressioinList ) ]  <= only the subRoutine part
             programStructure.add(createXmlNode("identifier", tokenInformation.token))
             compileSubroutineCall()
-        } else throw new RuntimeException("Invalid subroutine call path")
+        } else if(tokenInformation.tokenType == TokenType.KEYWORD && tokenInformation.token == "new"){ // 'new' keyword
+            programStructure.add(createXmlNode("keyword", tokenInformation.token))
+            compileSubroutineCall()
+        }  else throw new RuntimeException("Invalid subroutine call path")
     }
 
     void compileArrayExpression() {
@@ -460,6 +459,7 @@ class CompilationEngine {
             tokenInformation = getCurrentTokenAndAdvance()
             programStructure.add(createXmlNode("symbol", tokenInformation.token))
             compileExpression()
+            tokenInformation = getCurrentToken()
         }
         programStructure.add("</expressionList>")
     }
