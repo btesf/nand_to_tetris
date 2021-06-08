@@ -111,6 +111,7 @@ public class CompilationEngineTest {
                 "<symbol>)</symbol>",
                 "<subroutineBody>",
                 "<symbol>{</symbol>",
+                "<statements>",
                 "<letStatement>",
                 "<keyword>let</keyword>",
                 "<identifier>a</identifier>",
@@ -122,6 +123,7 @@ public class CompilationEngineTest {
                 "</expression>",
                 "<symbol>;</symbol>",
                 "</letStatement>",
+                "</statements>",
                 "<symbol>}</symbol>",
                 "</subroutineBody>",
                 "</subroutineDec>")
@@ -231,7 +233,13 @@ public class CompilationEngineTest {
         CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
         compilationEngine.compileSubroutineBody()
         List<String> programStructure = compilationEngine.getProgramStructure()
-        List<String> expected = Arrays.asList("<subroutineBody>", "<symbol>{</symbol>", "<symbol>}</symbol>", "</subroutineBody>")
+        List<String> expected = Arrays.asList(
+                "<subroutineBody>",
+                "<symbol>{</symbol>",
+                "<statements>",
+                "</statements>",
+                "<symbol>}</symbol>",
+                "</subroutineBody>")
         Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
 
         xml = '''
@@ -260,6 +268,8 @@ public class CompilationEngineTest {
                 "<varDec>", "<keyword>var</keyword>", "<identifier>Square</identifier>", "<identifier>square</identifier>",
                 "<symbol>,</symbol>", "<identifier>direction</identifier>", "<symbol>,</symbol>",
                 "<identifier>abc</identifier>", "<symbol>;</symbol>", "</varDec>",
+                "<statements>",
+                "</statements>",
                 "<symbol>}</symbol>", "</subroutineBody>")
         Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
 
@@ -315,6 +325,7 @@ public class CompilationEngineTest {
                 "</expression>",
                 "<symbol>)</symbol>",
                 "<symbol>{</symbol>",
+                "<statements>",
                 "<letStatement>",
                 "<keyword>let</keyword>",
                 "<identifier>d</identifier>",
@@ -326,9 +337,11 @@ public class CompilationEngineTest {
                 "</expression>",
                 "<symbol>;</symbol>",
                 "</letStatement>",
+                "</statements>",
                 "<symbol>}</symbol>",
                 "<keyword>else</keyword>",
                 "<symbol>{</symbol>",
+                "<statements>",
                 "<letStatement>",
                 "<keyword>let</keyword>",
                 "<identifier>d</identifier>",
@@ -344,6 +357,7 @@ public class CompilationEngineTest {
                 "</expression>",
                 "<symbol>;</symbol>",
                 "</letStatement>",
+                "</statements>",
                 "<symbol>}</symbol>",
                 "</ifStatement>")
 
@@ -392,6 +406,7 @@ public class CompilationEngineTest {
                 "</expression>",
                 "<symbol>)</symbol>",
                 "<symbol>{</symbol>",
+                "<statements>",
                 "<letStatement>",
                 "<keyword>let</keyword>",
                 "<identifier>d</identifier>",
@@ -403,6 +418,48 @@ public class CompilationEngineTest {
                 "</expression>",
                 "<symbol>;</symbol>",
                 "</letStatement>",
+                "</statements>",
+                "<symbol>}</symbol>",
+                "</whileStatement>")
+
+        Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
+
+
+        xml = '''
+    <tokens>
+        <keyword> while </keyword>          
+        <symbol> ( </symbol> 
+        <symbol> ~ </symbol> 
+        <identifier> a </identifier>          
+        <symbol> ) </symbol>
+        <symbol> { </symbol>       
+        <symbol> } </symbol>
+    </tokens>
+    '''
+        //with unary operator
+        parsedXml = new XmlSlurper().parseText(xml)
+        compilationEngine = new CompilationEngine();
+        tokenInformation = new ArrayList<>()
+        compilationEngine.setTokenizedTokens(tokenInformation)
+        CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
+        compilationEngine.compileWhile()
+        programStructure = compilationEngine.getProgramStructure()
+        expected = Arrays.asList(
+                "<whileStatement>",
+                "<keyword>while</keyword>",
+                "<symbol>(</symbol>",
+                "<expression>",
+                "<term>",
+                "<symbol>~</symbol>",
+                "<term>",
+                "<identifier>a</identifier>",
+                "</term>",
+                "</term>",
+                "</expression>",
+                "<symbol>)</symbol>",
+                "<symbol>{</symbol>",
+                "<statements>",
+                "</statements>",
                 "<symbol>}</symbol>",
                 "</whileStatement>")
 
@@ -491,45 +548,6 @@ public class CompilationEngineTest {
                 "</expression>",
                 "<symbol>;</symbol>",
                 "</returnStatement>")
-
-        Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
-    }
-
-
-    @Test
-    public void testKeywordConstant(){
-        String xml = '''
-        <tokens>                     
-            <keyword> true </keyword>
-        </tokens>
-        '''
-        def parsedXml = new XmlSlurper().parseText(xml)
-        CompilationEngine compilationEngine = new CompilationEngine();
-        List<TokenInformation> tokenInformation = new ArrayList<>()
-        compilationEngine.setTokenizedTokens(tokenInformation)
-        CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
-        MethodUtils.invokeMethod(compilationEngine, true, "compileKeywordConstant")
-        List<String> programStructure = compilationEngine.getProgramStructure()
-        List<String> expected = Arrays.asList("<keyword>true</keyword>")
-
-        Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
-    }
-
-    @Test
-    public void testBinaryOperator(){
-        String xml = '''
-        <tokens>                     
-            <symbol> + </symbol>
-        </tokens>
-        '''
-        def parsedXml = new XmlSlurper().parseText(xml)
-        CompilationEngine compilationEngine = new CompilationEngine();
-        List<TokenInformation> tokenInformation = new ArrayList<>()
-        compilationEngine.setTokenizedTokens(tokenInformation)
-        CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
-        MethodUtils.invokeMethod(compilationEngine, true, "compileBinaryOperator")
-        List<String> programStructure = compilationEngine.getProgramStructure()
-        List<String> expected = Arrays.asList("<symbol>+</symbol>")
 
         Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
     }
@@ -1122,7 +1140,7 @@ public class CompilationEngineTest {
                 "<symbol>)</symbol>",
                 "<subroutineBody>",
                 "<symbol>{</symbol>",
-
+                "<statements>",
                 "<letStatement>",
                 "<keyword>let</keyword>",
                 "<identifier>a</identifier>",
@@ -1178,7 +1196,7 @@ public class CompilationEngineTest {
                 "<symbol>)</symbol>",
                 "<symbol>;</symbol>",
                 "</doStatement>",
-
+                "</statements>",
                 "<symbol>}</symbol>",
                 "</subroutineBody>",
                 "</subroutineDec>",

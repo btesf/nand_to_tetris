@@ -6,7 +6,7 @@ class JackTokenizer {
 
     private final List<String> KEYWORDS = ["class", "constructor", "function", "method", "field", "static", "var", "int", "char",
                                            "boolean", "void", "true", "false", "null", "this", "let", "do", "if", "else", "while", "return"];
-    private final List<String> SYMBOLS  = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "<", ">", "=", "~"]
+    private final List<String> SYMBOLS  = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "<", ">", "=", "~", "|"]
     private List<String> sourceCode = new ArrayList<>();
     private int lineCounter = 0;
     private FileOutputStream fileOutputStream

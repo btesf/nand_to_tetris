@@ -22,7 +22,7 @@ class JackAnalyzer {
             String jackTokenizerDestination = getDestinationFile(new File(fileName), "T");
             JackTokenizer tokenizer = new JackTokenizer(fileName, jackTokenizerDestination)
             tokenizer.tokenize()
-            String codeAnalyzerDestination = getDestinationFile(sourceFile);
+            String codeAnalyzerDestination = getDestinationFile(new File(fileName));
             CompilationEngine compilationEngine = new CompilationEngine(jackTokenizerDestination, codeAnalyzerDestination)
             compilationEngine.compileFile();
             if(compilationEngine != null) compilationEngine.close()
