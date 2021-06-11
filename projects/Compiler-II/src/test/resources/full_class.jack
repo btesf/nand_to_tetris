@@ -1,0 +1,11 @@
+class Square {
+    field Square square;
+    field int direction;
+    static boolean abc, xyz;
+    static char def;
+
+    constructor void method1(){
+        let a = 5;
+        do ClassName.MethodName(2 + "abc def");
+    }
+}
