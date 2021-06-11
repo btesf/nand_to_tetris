@@ -35,11 +35,11 @@ class SymbolTable {
 
     public int indexOf(String identifier){
         SymbolEntry entry = getSymbolEntry(identifier, true)
-        return entry.type
+        return entry.index
     }
 
     //method first looks the identifier in subroutine scope, then in class scope
-    private SymbolEntry getSymbolEntry(String identifier, boolean throwIfNotFound = false){
+    SymbolEntry getSymbolEntry(String identifier, boolean throwIfNotFound = false){
         SymbolEntry entry = subroutineScopeMap.get(identifier)
         if(entry) return entry
         entry = classScopeMap.get(identifier)
@@ -65,5 +65,17 @@ class SymbolTable {
             this.kind = kind
             this.index = index
         }
+    }
+
+    public void restSubRoutineSymbolTable(){
+        this.subroutineScopeMap = new HashMap<>()
+    }
+
+    public int countSubroutineVariables(){
+        return subroutineScopeMap.keySet().size()
+    }
+
+    public int countClassVariables(){
+        return classScopeMap.keySet().size()
     }
 }

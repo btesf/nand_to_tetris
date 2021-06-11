@@ -1,4 +1,7 @@
 import com.bereket.compiler.CompilationEngine
+import com.bereket.compiler.IdentifierKind
+import com.bereket.compiler.JackTokenizer
+import com.bereket.compiler.SymbolTable
 import com.bereket.compiler.TokenInformation
 import org.apache.commons.lang3.reflect.FieldUtils
 import org.apache.commons.lang3.reflect.MethodUtils
@@ -1014,7 +1017,7 @@ public class CompilationEngineTest {
     @org.junit.jupiter.api.Test
     public void testAll(){
 
-        /**
+        String source ="""
                 class Square {
                     field Square square;
                     field int direction;
@@ -1022,188 +1025,92 @@ public class CompilationEngineTest {
                     static char def;
 
                     constructor void method1(){
+                        var Square method1Square;
+                        var char method1Char;
                         let a = Square.new(0, 0, 30);
                         do ClassName.MethodName(2 + "abc def");
                     }
                 }
-         */
-        String xml = '''
-        <tokens>               
-            <keyword> class </keyword>
-            <identifier> Square </identifier>
-            <symbol> { </symbol>
-            
-            <keyword> field </keyword>
-            <identifier> Square </identifier>
-            <identifier> square </identifier>
-            <symbol> ; </symbol>
-            
-            <keyword> field </keyword>
-            <keyword> int </keyword>
-            <identifier> direction </identifier>
-            <symbol> ; </symbol>
-            
-            <keyword> static </keyword>
-            <keyword> boolean </keyword>
-            <identifier> abc </identifier>
-            <symbol> , </symbol>
-            <identifier> xyz </identifier>
-            <symbol> ; </symbol>
-            
-            <keyword> static </keyword>
-            <keyword> char </keyword>
-            <identifier> def </identifier>
-            <symbol> ; </symbol>           
-            
-            <keyword> constructor </keyword>
-            <keyword> void </keyword>
-            <identifier> method1 </identifier>
-            <symbol> ( </symbol>
-            <symbol> ) </symbol>
-            <symbol> { </symbol>
-            
-            <keyword>let</keyword>
-            <identifier>a</identifier>
-            <symbol> = </symbol>
-            <identifier>Square</identifier>
-            <symbol>.</symbol>
-            <keyword>new</keyword>
-            <symbol> ( </symbol>
-            <integerConstant> 0 </integerConstant>
-            <symbol> , </symbol>
-            <integerConstant> 0 </integerConstant>
-            <symbol> , </symbol>
-            <integerConstant> 30 </integerConstant>
-            <symbol> ) </symbol>
-            <symbol> ; </symbol>
-          
-            <keyword> do </keyword>
-            <identifier> ClassName </identifier>
-            <symbol> . </symbol>
-            <identifier> MethodName </identifier>
-            <symbol> ( </symbol>
-            <integerConstant> 2 </integerConstant>
-            <symbol> + </symbol>
-            <stringConstant> abc def </stringConstant>
-            <symbol> ) </symbol>
-            <symbol> ; </symbol> 
-            
-            <symbol> } </symbol>                     
-            <symbol> } </symbol>                                                              
-        </tokens>
-        '''
-        def parsedXml = new XmlSlurper().parseText(xml)
+         """
+
+        JackTokenizer jackTokenizer = new JackTokenizer()
+        jackTokenizer.filterSourceFile(JackTokenizer.readAndCleanSource(source))
+        jackTokenizer.tokenize()
+
         CompilationEngine compilationEngine = new CompilationEngine();
-        List<TokenInformation> tokenInformation = new ArrayList<>()
-        compilationEngine.setTokenizedTokens(tokenInformation)
-        FieldUtils.writeField(compilationEngine, "currentIndex", 0, true);
-        CompilationEngine.readXmlToTokenInformation(parsedXml, tokenInformation)
+        compilationEngine.setTokenizedTokens(jackTokenizer.getTokenizedTokens())
+
         compilationEngine.compileClass()
-        List<String> programStructure = compilationEngine.getProgramStructure()
-        List<String> expected = Arrays.asList(
-                "<class>",
-                "<keyword>class</keyword>",
-                "<identifier>Square</identifier>",
-                "<symbol>{</symbol>",
-                "<classVarDec>", "<keyword>field</keyword>",
-                "<identifier>Square</identifier>",
-                "<identifier>square</identifier>",
-                "<symbol>;</symbol>",
-                "</classVarDec>",
-                "<classVarDec>",
-                "<keyword>field</keyword>",
-                "<keyword>int</keyword>",
-                "<identifier>direction</identifier>",
-                "<symbol>;</symbol>",
-                "</classVarDec>", "<classVarDec>",
-                "<keyword>static</keyword>",
-                "<keyword>boolean</keyword>",
-                "<identifier>abc</identifier>",
-                "<symbol>,</symbol>",
-                "<identifier>xyz</identifier>",
-                "<symbol>;</symbol>",
-                "</classVarDec>",
-                "<classVarDec>",
-                "<keyword>static</keyword>",
-                "<keyword>char</keyword>",
-                "<identifier>def</identifier>",
-                "<symbol>;</symbol>",
-                "</classVarDec>",
 
-                "<subroutineDec>",
-                "<keyword>constructor</keyword>",
-                "<keyword>void</keyword>",
-                "<identifier>method1</identifier>",
-                "<symbol>(</symbol>",
-                "<parameterList>",
-                "</parameterList>",
-                "<symbol>)</symbol>",
-                "<subroutineBody>",
-                "<symbol>{</symbol>",
-                "<statements>",
-                "<letStatement>",
-                "<keyword>let</keyword>",
-                "<identifier>a</identifier>",
-                "<symbol>=</symbol>",
-                "<expression>",
-                "<term>",
-                "<identifier>Square</identifier>",
-                "<symbol>.</symbol>",
-                "<keyword>new</keyword>",
-                "<symbol>(</symbol>",
-                "<expressionList>",
-                "<expression>",
-                "<term>",
-                "<integerConstant>0</integerConstant>",
-                "</term>",
-                "</expression>",
-                "<symbol>,</symbol>",
-                "<expression>",
-                "<term>",
-                "<integerConstant>0</integerConstant>",
-                "</term>",
-                "</expression>",
-                "<symbol>,</symbol>",
-                "<expression>",
-                "<term>",
-                "<integerConstant>30</integerConstant>",
-                "</term>",
-                "</expression>",
-                "</expressionList>",
-                "<symbol>)</symbol>",
-                "</term>",
-                "</expression>",
-                "<symbol>;</symbol>",
-                "</letStatement>",
+        SymbolTable symbolTable = compilationEngine.getSymbolTable()
+        SymbolTable.SymbolEntry entry =  symbolTable.getSymbolEntry("square")
+        Assertions.assertEquals(entry.type, "Square")
+        Assertions.assertEquals(entry.kind, IdentifierKind.FIELD)
 
-                "<doStatement>",
-                "<keyword>do</keyword>",
-                "<identifier>ClassName</identifier>",
-                "<symbol>.</symbol>",
-                "<identifier>MethodName</identifier>",
-                "<symbol>(</symbol>",
-                "<expressionList>",
-                "<expression>",
-                "<term>",
-                "<integerConstant>2</integerConstant>",
-                "</term>",
-                "<symbol>+</symbol>",
-                "<term>",
-                "<stringConstant>abc def</stringConstant>",
-                "</term>",
-                "</expression>",
-                "</expressionList>",
-                "<symbol>)</symbol>",
-                "<symbol>;</symbol>",
-                "</doStatement>",
-                "</statements>",
-                "<symbol>}</symbol>",
-                "</subroutineBody>",
-                "</subroutineDec>",
+        entry =  symbolTable.getSymbolEntry("xyz")
+        Assertions.assertEquals(entry.type, "boolean")
+        Assertions.assertEquals(entry.kind, IdentifierKind.STATIC)
 
-                "<symbol>}</symbol>",
-                "</class>")
-        Assertions.assertArrayEquals(programStructure.toArray(), expected.toArray());
+        entry =  symbolTable.getSymbolEntry("def")
+        Assertions.assertEquals(entry.type, "char")
+        Assertions.assertEquals(entry.kind, IdentifierKind.STATIC)
 
+        entry =  symbolTable.getSymbolEntry("method1Square")
+        Assertions.assertEquals(entry.type, "Square")
+        Assertions.assertEquals(entry.kind, IdentifierKind.VAR)
+
+        entry =  symbolTable.getSymbolEntry("method1Char")
+        Assertions.assertEquals(entry.type, "char")
+        Assertions.assertEquals(entry.kind, IdentifierKind.VAR)
     }
+
+    @org.junit.jupiter.api.Test
+    public void testSubroutineTable(){
+
+        String source ="""
+                class Square {
+                    field Square square;
+                    field int direction;
+                    static boolean abc, xyz;
+                    static char def;
+
+                    constructor void method1(){
+                        var Square method1Square;
+                        var char method1Char;                       
+                    }
+                    
+                    method void method2(){                      
+                        var char method2Char;
+                        var int method2Int;                       
+                    }
+                }
+         """
+
+        JackTokenizer jackTokenizer = new JackTokenizer()
+        jackTokenizer.filterSourceFile(JackTokenizer.readAndCleanSource(source))
+        jackTokenizer.tokenize()
+
+        CompilationEngine compilationEngine = new CompilationEngine();
+        compilationEngine.setTokenizedTokens(jackTokenizer.getTokenizedTokens())
+
+        compilationEngine.compileClass()
+
+        SymbolTable symbolTable = compilationEngine.getSymbolTable()
+        SymbolTable.SymbolEntry entry =  symbolTable.getSymbolEntry("method1Square")
+        //method1Square should not exist - it is out of scope
+        Assertions.assertNull(entry)
+
+        entry =  symbolTable.getSymbolEntry("method1Char")
+        //method1Char should not exist - it is out of scope
+        Assertions.assertNull(entry)
+
+        entry =  symbolTable.getSymbolEntry("method2Char")
+        Assertions.assertEquals(entry.type, "char")
+        Assertions.assertEquals(entry.kind, IdentifierKind.VAR)
+
+        entry =  symbolTable.getSymbolEntry("method2Int")
+        Assertions.assertEquals(entry.type, "int")
+        Assertions.assertEquals(entry.kind, IdentifierKind.VAR)
+    }
+
 }

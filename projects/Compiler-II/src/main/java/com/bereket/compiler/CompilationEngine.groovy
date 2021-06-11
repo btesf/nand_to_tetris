@@ -9,6 +9,7 @@ class CompilationEngine {
     private final List<String> KEYWORD_CONSTANTS = ["true", "false", "null", "this"]
     private List<TokenInformation> tokenizedTokens = new ArrayList<>();
     private List<String> programStructure = new ArrayList<>()
+    private SymbolTable symbolTable = new SymbolTable()
     int currentIndex = 0;
 
     public CompilationEngine(String inputFileName, String outputFileName){
@@ -68,7 +69,8 @@ class CompilationEngine {
     private void compileClassVarDec(){
         TokenInformation tokenInformation = getCurrentToken()
         if(tokenInformation == null || (tokenInformation.token != "static" && tokenInformation.token != "field")) return;
-        IdentifierCategory category = IdentifierCategory.valueOf(tokenInformation.token.toLowerCase())
+        //keep the kind
+        IdentifierKind kind = IdentifierKind.valueOf(tokenInformation.token.toUpperCase())
         tokenInformation = getCurrentTokenAndAdvance()
         addToStructure("<classVarDec>")
         addToStructure(tokenInformation) //field | static
@@ -81,9 +83,17 @@ class CompilationEngine {
             addToStructure(tokenInformation)
         } else throw new RuntimeException("Invalid type '${tokenInformation.token}'")
 
+        //keep the variable type
+        String type = tokenInformation.token //record the type
+
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.tokenType != TokenType.IDENTIFIER) throw new RuntimeException("variable name is not valid : ${tokenInformation.token}")
-        tokenInformation.setIdentifierMetaData(category, IdentifierOccurrence.DEFINED)
+
+        //keep the variable name
+        String identifierName = tokenInformation.token
+        //put the variable in symbol table
+        symbolTable.define(identifierName, type, kind)
+
         addToStructure(tokenInformation)
         tokenInformation = getCurrentTokenAndAdvance()
         //if the next token is comma (,) read the next variable declaration
@@ -92,7 +102,12 @@ class CompilationEngine {
             tokenInformation = getCurrentTokenAndAdvance()
             if(tokenInformation.tokenType != TokenType.IDENTIFIER)
                 throw new RuntimeException("variable list after comma should be an identifier")
-            tokenInformation.setIdentifierMetaData(category, IdentifierOccurrence.USED)
+
+            //keep the variable name
+            identifierName = tokenInformation.token
+            //put the variable in symbol table
+            symbolTable.define(identifierName, type, kind)
+
             addToStructure(tokenInformation)
             tokenInformation = getCurrentTokenAndAdvance()
         }
@@ -107,6 +122,10 @@ class CompilationEngine {
     public void compileSubroutineDec(){
         TokenInformation tokenInformation = getCurrentToken()
         if(tokenInformation == null || (tokenInformation.token != "constructor" && tokenInformation.token != "function" && tokenInformation.token != "method")) return;
+
+        //reset subroutine scoped symbol table
+        this.symbolTable.restSubRoutineSymbolTable()
+
         tokenInformation = getCurrentTokenAndAdvance()
         addToStructure("<subroutineDec>")
         addToStructure(tokenInformation) //constructor | function | method
@@ -178,10 +197,15 @@ class CompilationEngine {
         } else if (tokenInformation.tokenType == TokenType.IDENTIFIER){
             type = "identifier"
         } else return false
+        //extract the datatype
+        String dataType =  tokenInformation.token
         tokenInformation = getCurrentTokenAndAdvance()
         programStructure.add(createXmlNode(type, tokenInformation.token))
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.tokenType != TokenType.IDENTIFIER) throw new RuntimeException("variable name is not valid : ${tokenInformation.token}")
+        //extract the variable name
+        String variableName = tokenInformation.token
+        symbolTable.define(variableName, dataType, IdentifierKind.ARG)
         addToStructure(tokenInformation)
         return true;
     }
@@ -201,9 +225,18 @@ class CompilationEngine {
         } else if (tokenInformation.tokenType == TokenType.IDENTIFIER){
             addToStructure(tokenInformation)
         } else throw new RuntimeException("Invalid type '${tokenInformation.token}'")
+
+        //keep data type
+        String dataType = tokenInformation.token
+
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.tokenType != TokenType.IDENTIFIER) throw new RuntimeException("variable name is not valid : ${tokenInformation.token}")
         addToStructure(tokenInformation)
+
+        //keep variable name
+        String variableName = tokenInformation.token
+        symbolTable.define(variableName, dataType, IdentifierKind.VAR)
+
         tokenInformation = getCurrentTokenAndAdvance()
         //if the next token is comma (,) read the next variable declaration
         while(tokenInformation.token == ","){
@@ -211,6 +244,11 @@ class CompilationEngine {
             tokenInformation = getCurrentTokenAndAdvance()
             if(tokenInformation.tokenType != TokenType.IDENTIFIER)
                 throw new RuntimeException("variable list after comma should be an identifier")
+
+            variableName = tokenInformation.token
+            symbolTable.define(variableName, dataType, IdentifierKind.VAR)
+            symbolTable.define(variableName, dataType, IdentifierKind.VAR)
+
             addToStructure(tokenInformation)
             tokenInformation = getCurrentTokenAndAdvance()
         }
@@ -519,5 +557,9 @@ class CompilationEngine {
 
     List<String> getProgramStructure() {
         return programStructure
+    }
+
+    public SymbolTable getSymbolTable() {
+        return symbolTable
     }
 }

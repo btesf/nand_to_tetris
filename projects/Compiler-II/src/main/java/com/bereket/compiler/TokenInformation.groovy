@@ -5,7 +5,6 @@ public class TokenInformation {
     private final Map<String, String> specialCharacterCodedLookup = ['<': '&lt;', '>': '&gt;', '"': '&quot;', '&': '&amp;']
     String token
     TokenType tokenType
-    IdentifierMetadata metadata
 
     TokenInformation(String token, TokenType tokenType){
         if(tokenType == TokenType.STRING_CONST){
@@ -22,14 +21,6 @@ public class TokenInformation {
             return specialCharacterCodedLookup.get(token)
         }
         return token
-    }
-
-    public void setIdentifierMetaData(IdentifierCategory category, IdentifierOccurrence occurrence, int index = 0){
-        this.metadata = new IdentifierMetadata(category, occurrence, index)
-    }
-
-    IdentifierMetadata getMetadata() {
-        return metadata
     }
 
     @Override
