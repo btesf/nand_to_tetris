@@ -19,11 +19,8 @@ class JackAnalyzer {
         }
 
         for(String fileName : jackSourceFiles){
-            String jackTokenizerDestination = getDestinationFile(new File(fileName), "T");
-            JackTokenizer tokenizer = new JackTokenizer(fileName, jackTokenizerDestination)
-            tokenizer.tokenize()
             String codeAnalyzerDestination = getDestinationFile(new File(fileName));
-            CompilationEngine compilationEngine = new CompilationEngine(jackTokenizerDestination, codeAnalyzerDestination)
+            CompilationEngine compilationEngine = new CompilationEngine(fileName, codeAnalyzerDestination)
             compilationEngine.compileFile();
             if(compilationEngine != null) compilationEngine.close()
         }

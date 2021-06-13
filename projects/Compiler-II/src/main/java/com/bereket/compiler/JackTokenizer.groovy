@@ -9,18 +9,16 @@ class JackTokenizer {
     private final List<String> SYMBOLS  = ["{", "}", "(", ")", "[", "]", ".", ",", ";", "+", "-", "*", "/", "&", "<", ">", "=", "~", "|"]
     private List<String> sourceCode = new ArrayList<>();
     private int lineCounter = 0;
-    private FileOutputStream fileOutputStream
     private List<TokenInformation> tokenizedTokens = new ArrayList<>();
 
     //for test purpose
     public JackTokenizer(){
     }
 
-    public JackTokenizer(String sourceFile, String outputFileName){
+    public JackTokenizer(String sourceFile){
         String fileContent = new String(new File(sourceFile).readBytes());
         List<String> rawLines = readAndCleanSource(fileContent);
         this.filterSourceFile(rawLines)
-        fileOutputStream = new FileOutputStream(outputFileName)
     }
 
     public JackTokenizer(List<String> sourceCode){
@@ -37,8 +35,6 @@ class JackTokenizer {
             }
             advance();
         }
-        writeTokensToFile()
-        this.close()
     }
 
     public boolean hasMoreTokens(){
@@ -64,16 +60,6 @@ class JackTokenizer {
         //identifier should not begin with numberx
         if(token.matches("^[0-9]+.*")) throw new RuntimeException("Identifier should not begin with number charcter: " + token)
         return TokenType.IDENTIFIER
-    }
-
-    private void writeTokensToFile(){
-        StringBuilder builder = new StringBuilder("<tokens>\n")
-        for(TokenInformation tokenInformation: tokenizedTokens){
-            String tagName = tokenInformation.tokenType.tagName
-            builder.append(String.format("<%s>%s</%s>\n", tagName, tokenInformation.token, tagName))
-        }
-        builder.append("</tokens>")
-        if(fileOutputStream) fileOutputStream.write(builder.toString().getBytes())
     }
 
     private String getCurrentLine(){
@@ -122,9 +108,5 @@ class JackTokenizer {
 
     List<TokenInformation> getTokenizedTokens() {
         return tokenizedTokens
-    }
-
-    public void close(){
-        if(fileOutputStream) fileOutputStream.close()
     }
 }

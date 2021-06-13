@@ -3,31 +3,30 @@ package com.bereket.compiler
 class CompilationEngine {
 
     private FileOutputStream fileOutputStream
-    private String xmlSource = "";
     private final List<String> UNARY_OPS = ["-", "~"]
     private final List<String> BINARY_OPS = ["+", "-", "*", "/", "&", "|", "<", ">", "=", "&lt;", "&gt;", "&amp;"]
     private final List<String> KEYWORD_CONSTANTS = ["true", "false", "null", "this"]
     private List<TokenInformation> tokenizedTokens = new ArrayList<>();
     private List<String> programStructure = new ArrayList<>()
     private SymbolTable symbolTable = new SymbolTable()
+    private JackTokenizer jackTokenizer;
+    private VMWriter vmWriter
     int currentIndex = 0;
 
     public CompilationEngine(String inputFileName, String outputFileName){
-        File xmlFile = new File(inputFileName)
-        xmlSource = new String(xmlFile.readBytes());
-        fileOutputStream = new FileOutputStream(outputFileName)
+        jackTokenizer = new JackTokenizer(inputFileName)
+        vmWriter = new VMWriter(outputFileName)
     }
 
     //for com.bereket.compiler.Test purposes
     public CompilationEngine(){
-
     }
 
     void compileFile(){
-        def rootNode = new XmlSlurper().parseText(xmlSource)
-        readXmlToTokenInformation(rootNode, tokenizedTokens)
+        jackTokenizer.tokenize()
+        this.tokenizedTokens.addAll(jackTokenizer.tokenizedTokens)
         compileClass();
-        fileOutputStream.write(programStructure.join("\n").getBytes());
+        vmWriter.writeFile()
     }
 
     static void readXmlToTokenInformation(def tokens, List<TokenInformation> tokenizedTokens){
@@ -523,10 +522,6 @@ class CompilationEngine {
             tokenInformation = getCurrentToken()
         }
         addToStructure("</expressionList>")
-    }
-
-    public void close(){
-        fileOutputStream.close()
     }
 
     public TokenInformation getCurrentTokenAndAdvance(){

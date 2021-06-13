@@ -3,11 +3,10 @@ package com.bereket.compiler
 class VMWriter {
 
     private FileOutputStream fileOutputStream
+    private StringBuilder stringBuilder = new StringBuilder();
 
     public VMWriter(String outputFileName){
-
         fileOutputStream = new FileOutputStream(outputFileName)
-
     }
 
     public void writePush(MemorySegment segment, int index){
@@ -37,6 +36,7 @@ class VMWriter {
     }
 
     void writeFile(){
-        fileOutputStream.write("".getBytes());
+        fileOutputStream.write(stringBuilder.toString().getBytes());
+        close()
     }
 }
