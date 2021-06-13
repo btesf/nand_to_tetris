@@ -22,18 +22,17 @@ class JackAnalyzer {
             String codeAnalyzerDestination = getDestinationFile(new File(fileName));
             CompilationEngine compilationEngine = new CompilationEngine(fileName, codeAnalyzerDestination)
             compilationEngine.compileFile();
-            if(compilationEngine != null) compilationEngine.close()
         }
 
         println "Translation completed";
     }
 
-    private static String getDestinationFile(File file, String suffix = null) {
+    private static String getDestinationFile(File file) {
         String fileName = file.absolutePath
         String destinationDirectory =  file.isDirectory() ? fileName : (fileName.substring(0, fileName.lastIndexOf("/") + 1)) //include the last slash
         String destinationFileName = fileName.substring(fileName.lastIndexOf("/") + 1) //only leave the last token after /
                 .replaceAll("[.].*", "")
-        String destinationPath = destinationDirectory + "/" + destinationFileName + (suffix?:"") + ".xml"
+        String destinationPath = destinationDirectory + "/" + destinationFileName + ".vm"
         return destinationPath
     }
 }

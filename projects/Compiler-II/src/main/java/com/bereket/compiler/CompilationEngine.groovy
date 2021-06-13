@@ -20,6 +20,7 @@ class CompilationEngine {
 
     //for com.bereket.compiler.Test purposes
     public CompilationEngine(){
+        vmWriter = new VMWriter(null)
     }
 
     void compileFile(){
@@ -48,11 +49,15 @@ class CompilationEngine {
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.tokenType != TokenType.IDENTIFIER) throw new RuntimeException("Identifier expected after class name; found: " + tokenInformation.token)
         addToStructure(tokenInformation)
+
+        //class name
+        String className = tokenInformation.token
+
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.token != "{") throw new RuntimeException("'{' expected  after class name")
         addToStructure(tokenInformation)
         compileClassVarDec();
-        compileSubroutineDec()
+        compileSubroutineDec(className)
         //class ending node
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.token != "}") throw new RuntimeException("Class should be closed using '}'")
@@ -118,7 +123,12 @@ class CompilationEngine {
     }
 
     //('constructor' | 'function' | 'method') ('void' | type) subroutineName '(' parameterList ')' subroutineBody
-    public void compileSubroutineDec(){
+    public void compileSubroutineDec(String className){
+
+        String subroutineName;
+        int noOfParams;
+        boolean isVoidRoutine = false
+
         TokenInformation tokenInformation = getCurrentToken()
         if(tokenInformation == null || (tokenInformation.token != "constructor" && tokenInformation.token != "function" && tokenInformation.token != "method")) return;
 
@@ -131,7 +141,11 @@ class CompilationEngine {
         tokenInformation = getCurrentTokenAndAdvance()
         //if the token type is keyword, it should be any of the ff. "int", "char" or "boolean". Otherwise it can be a class name
         if(tokenInformation.tokenType == TokenType.KEYWORD) {
-            if(tokenInformation.token != "void") throw new RuntimeException("Invalid return type '${tokenInformation.token}' for method. It can only be 'void' or type")
+            if(!(tokenInformation.token in ["void", "int", "char"]))
+                throw new RuntimeException("Invalid return type '${tokenInformation.token}' for method. It can only be 'void' or type")
+
+            isVoidRoutine = true
+
             addToStructure(tokenInformation)
         } else if (tokenInformation.tokenType == TokenType.IDENTIFIER){
             addToStructure(tokenInformation)
@@ -139,17 +153,38 @@ class CompilationEngine {
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.tokenType != TokenType.IDENTIFIER) throw new RuntimeException("method/function name is not valid : ${tokenInformation.token}")
         addToStructure(tokenInformation)
+
+        //Sub-routine name
+        subroutineName = "${className}.${tokenInformation.token}"
+
         tokenInformation = getCurrentTokenAndAdvance()
         //next is '('
         if(tokenInformation.token != "(") throw new RuntimeException("Method parameter list should start with '('. Found ${tokenInformation.token}")
         addToStructure(tokenInformation)
-        compileParameterList();
+
+        //No of Params
+        noOfParams = compileParameterList();
+
+        tokenInformation = getCurrentToken()
+        if(tokenInformation.token != ")")
+            throw new RuntimeException("Method parameter list should end with ')'")
+
         tokenInformation = getCurrentTokenAndAdvance()
-        if(tokenInformation.token != ")") throw new RuntimeException("Method parameter list should end with ')'")
+
+        //write the function call here
+        vmWriter.writeFunction(subroutineName, noOfParams)
+
         addToStructure(tokenInformation)
         compileSubroutineBody()
+
+        if(isVoidRoutine){
+            //push constant 0 to the stack
+            vmWriter.writePush(MemorySegment.CONST, 0)
+        }
+        vmWriter.writeReturn()
+
         addToStructure("</subroutineDec>")
-        compileSubroutineDec()
+        compileSubroutineDec(className)
     }
 
     //'{' varDec* statements '}'
@@ -169,14 +204,19 @@ class CompilationEngine {
     }
 
     //((type varName) (',' type varName)*)?
-    public void compileParameterList(){
+    public int compileParameterList(){
+        int paramsCount = 0;
         addToStructure("<parameterList>")
         if(readParameter()){
+            paramsCount++
+           if(getCurrentToken() && getCurrentToken().token == ")") return paramsCount
+
             TokenInformation tokenInformation = getCurrentTokenAndAdvance()
             //if the next token is comma (,) read the next variable declaration
             while(tokenInformation != null && tokenInformation.token == ","){
                 addToStructure(tokenInformation)
                 if(readParameter()){
+                    paramsCount++
                     if(getCurrentToken() && getCurrentToken().token == ")")
                         break;
                     tokenInformation = getCurrentTokenAndAdvance()
@@ -184,11 +224,12 @@ class CompilationEngine {
             }
         }
         addToStructure("</parameterList>")
+        return paramsCount
     }
 
     public boolean readParameter(){
         TokenInformation tokenInformation = getCurrentToken()
-        if(tokenInformation == null) false;
+        if(tokenInformation == null) return false;
         String type = null;
         if(tokenInformation.tokenType == TokenType.KEYWORD) {
             if(!["char", "int", "boolean"].contains(tokenInformation.token)) return false;
@@ -235,6 +276,8 @@ class CompilationEngine {
         //keep variable name
         String variableName = tokenInformation.token
         symbolTable.define(variableName, dataType, IdentifierKind.VAR)
+        SymbolTable.SymbolEntry entry = symbolTable.getSymbolEntry(variableName)
+        vmWriter.writePush(MemorySegment.LOCAL, entry.index)
 
         tokenInformation = getCurrentTokenAndAdvance()
         //if the next token is comma (,) read the next variable declaration
@@ -246,7 +289,8 @@ class CompilationEngine {
 
             variableName = tokenInformation.token
             symbolTable.define(variableName, dataType, IdentifierKind.VAR)
-            symbolTable.define(variableName, dataType, IdentifierKind.VAR)
+            entry = symbolTable.getSymbolEntry(variableName)
+            vmWriter.writePush(MemorySegment.LOCAL, entry.index)
 
             addToStructure(tokenInformation)
             tokenInformation = getCurrentTokenAndAdvance()
@@ -295,7 +339,7 @@ class CompilationEngine {
         addToStructure("<doStatement>")
         tokenInformation = getCurrentTokenAndAdvance()
         addToStructure(tokenInformation) //do
-        compileSubroutineCall()
+        compileSubroutineCall("")
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.token != ";")
             throw new RuntimeException("do expression should terminate with ';'")
@@ -422,10 +466,23 @@ class CompilationEngine {
         tokenInformation = getCurrentToken()
         //if the current token is binary operator
         while(tokenInformation && BINARY_OPS.contains(tokenInformation.token)){
+            String binaryOperator = tokenInformation.getDecodedString()
+
             tokenInformation = getCurrentTokenAndAdvance()
             addToStructure(tokenInformation)
             compileTerm()
             tokenInformation = getCurrentToken()
+            Command cmd = Command.getCommandForSymbol(binaryOperator)
+            if(cmd) vmWriter.writeArithmetic(cmd)
+            else {
+                // "*", "/", do OS system calls
+                if(binaryOperator == "*"){
+                    vmWriter.writeCall("Math.multiply", 2)
+                } else if (binaryOperator == "/"){
+                    vmWriter.writeCall("Math.divide", 2)
+                } else
+                    throw new RuntimeException("Operator not supporter yet")
+            }
         }
         addToStructure("</expression>")
     }
@@ -435,11 +492,31 @@ class CompilationEngine {
         if(tokenInformation == null) return;
         addToStructure("<term>")
         tokenInformation = getCurrentTokenAndAdvance()
-        if(tokenInformation.tokenType in [TokenType.INT_CONST, TokenType.STRING_CONST] ){ //integerConstant | stringConstant
+        if(tokenInformation.tokenType == TokenType.INT_CONST){ //integerConstant
             programStructure.add(createXmlNode(tokenInformation.tokenType.tagName, tokenInformation.token))
+
+            vmWriter.writePush(MemorySegment.CONST, tokenInformation.token.toInteger())
+
+        } else if(tokenInformation.tokenType ==  TokenType.STRING_CONST){ // stringConstant
+            programStructure.add(createXmlNode(tokenInformation.tokenType.tagName, tokenInformation.token))
+            char[] chars = tokenInformation.token.chars
+            for(char c : chars){
+                //compileSubroutineCall()  => String.appendChar(c).
+            }
+           // vmWriter.writePush(MemorySegment.CONST, Integer.valueOf(tokenInformation.token))
+
         } else if (tokenInformation.tokenType == TokenType.KEYWORD){ //keywordConstant
             if(!KEYWORD_CONSTANTS.contains(tokenInformation.token)) throw new RuntimeException("Unsupported keyword '${tokenInformation.token}' in Term.")
             programStructure.add(createXmlNode(tokenInformation.tokenType.tagName, tokenInformation.token))
+
+            if(tokenInformation.token == "true"){
+                vmWriter.writePush(MemorySegment.CONST, 1)
+                vmWriter.writeArithmetic(Command.NEG)
+            } else if (tokenInformation.token in ["false", "null"]){
+                vmWriter.writePush(MemorySegment.CONST, 0)
+            } else if(tokenInformation.token == "this"){
+            //TODO:
+            }
         } else if (tokenInformation.tokenType == TokenType.IDENTIFIER){ //varName | varName '[' expression ']' | subroutineCall | '(' expression ')'
             compileTermWithLeadingIdentifier(tokenInformation)
         } else if (tokenInformation.tokenType == TokenType.SYMBOL) {
@@ -452,6 +529,12 @@ class CompilationEngine {
 
     private void compileTermWithLeadingIdentifier(TokenInformation tokenInformation) {
         programStructure.add(createXmlNode(tokenInformation.tokenType.tagName, tokenInformation.token)) //varName
+
+        SymbolTable.SymbolEntry symbolEntry = symbolTable.getSymbolEntry(tokenInformation.token)
+        if(symbolEntry){
+            vmWriter.writePush(symbolEntry.kind.getMemorySegment(), symbolEntry.index)
+        }
+
         TokenInformation currentToken = getCurrentToken()
         if (currentToken && currentToken.token == "[") {
             compileArrayExpression()
@@ -473,28 +556,39 @@ class CompilationEngine {
         } else if (UNARY_OPS.contains(tokenInformation.token)) { //unary op term
             addToStructure(tokenInformation)
             compileTerm()
+
+            Command cmd = tokenInformation.token == "~" ? Command.NOT : Command.NEG
+            vmWriter.writeArithmetic(cmd)
+
         } else throw new RuntimeException("Term cannot start with '${tokenInformation.token }'")
     }
 
-    void compileSubroutineCall(){
+    //DONE
+    void compileSubroutineCall(String part){
         TokenInformation tokenInformation = getCurrentTokenAndAdvance()
         if (tokenInformation.token == "(") { // subRoutine( expressionList )
             addToStructure(tokenInformation)
-            compileExpressionList()
+            int noOfArgs = compileExpressionList()
             tokenInformation = getCurrentTokenAndAdvance()
             if (tokenInformation == null || tokenInformation.token != ")")
                 throw new RuntimeException("Subroutine call should be terminated by  ')'")
+
+            vmWriter.writeCall(part, noOfArgs)
+
             addToStructure(tokenInformation)
         } else if (tokenInformation.token == "."){ // [className].[subRoutine ( expressioinList ) ] <= only the dot part
             addToStructure(tokenInformation) // write .
-            compileSubroutineCall()
+
+            part += tokenInformation.token
+            compileSubroutineCall(part)
+
         } else if(tokenInformation.tokenType == TokenType.IDENTIFIER){ //it only comes here in a recursive call where the previous token was "." ; [className.] subRoutine [( expressioinList ) ]  <= only the subRoutine part
             addToStructure(tokenInformation)
-            compileSubroutineCall()
-        } else if(tokenInformation.tokenType == TokenType.KEYWORD && tokenInformation.token == "new"){ // 'new' keyword
-            addToStructure(tokenInformation)
-            compileSubroutineCall()
-        }  else throw new RuntimeException("Invalid subroutine call path")
+
+            part += tokenInformation.token
+            compileSubroutineCall(part)
+
+        } else throw new RuntimeException("Invalid subroutine call path")
     }
 
     void compileArrayExpression() {
@@ -510,18 +604,22 @@ class CompilationEngine {
         }
     }
 
-    public void compileExpressionList(){
+    public int compileExpressionList(){
+        int noOfExpressions = 0
         addToStructure("<expressionList>")
         compileExpression();
+        noOfExpressions++
         TokenInformation tokenInformation = getCurrentToken()
         //if the next token is comma (,) read the next variable declaration
         while(tokenInformation.token == ","){
             tokenInformation = getCurrentTokenAndAdvance()
             addToStructure(tokenInformation)
             compileExpression()
+            noOfExpressions++
             tokenInformation = getCurrentToken()
         }
         addToStructure("</expressionList>")
+        return noOfExpressions
     }
 
     public TokenInformation getCurrentTokenAndAdvance(){

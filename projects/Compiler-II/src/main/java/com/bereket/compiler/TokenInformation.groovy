@@ -3,6 +3,7 @@ package com.bereket.compiler
 public class TokenInformation {
 
     private final Map<String, String> specialCharacterCodedLookup = ['<': '&lt;', '>': '&gt;', '"': '&quot;', '&': '&amp;']
+    private final Map<String, String> specialCharacterReverseLookup = ['&lt;' : '<', '&gt;' : '>',  '&quot;' : '"', '&amp;' : '&']
     String token
     TokenType tokenType
 
@@ -19,6 +20,14 @@ public class TokenInformation {
     private String getEncodedString(String token){
         if(specialCharacterCodedLookup.containsKey(token)){
             return specialCharacterCodedLookup.get(token)
+        }
+        return token
+    }
+
+    public String getDecodedString(){
+        if(tokenType == TokenType.SYMBOL){
+           String value = specialCharacterReverseLookup.get(token)
+           if(value) return value
         }
         return token
     }
