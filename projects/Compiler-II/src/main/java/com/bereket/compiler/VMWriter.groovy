@@ -3,47 +3,47 @@ package com.bereket.compiler
 class VMWriter {
 
     private FileOutputStream fileOutputStream
-    private StringBuilder stringBuilder = new StringBuilder();
+    private List<String> vmLines = new ArrayList<>()
 
     public VMWriter(String outputFileName){
         if(outputFileName) fileOutputStream = new FileOutputStream(outputFileName)
     }
 
     public void writePush(MemorySegment segment, int index){
-        stringBuilder.append("push ${segment.name} ${index} \n")
+        vmLines.add("push ${segment.name} ${index}")
     }
 
     public void writePop(MemorySegment segment, int index){
-        stringBuilder.append("pop ${segment.name} ${index} \n")
+        vmLines.add("pop ${segment.name} ${index}")
     }
 
     public void writeArithmetic(Command command){
         String cmd = command.toString().toLowerCase()
-        stringBuilder.append("${cmd} \n")
+        vmLines.add("${cmd}")
     }
 
     public void writeLabel(String label){
-        stringBuilder.append("label ${label} \n")
+        vmLines.add("label ${label}")
     }
 
     public void writeGoto(String label){
-        stringBuilder.append("goto ${label} \n")
+        vmLines.add("goto ${label}")
     }
 
     public void writeIf(String label){
-        stringBuilder.append("if-goto ${label} \n")
+        vmLines.add("if-goto ${label}")
     }
 
     public void writeCall(String subroutineName, int nArgs){
-        stringBuilder.append("call ${subroutineName} ${nArgs} \n")
+        vmLines.add("call ${subroutineName} ${nArgs}")
     }
 
     public void writeFunction(String subroutineName, int nLocals){
-        stringBuilder.append("function ${subroutineName} ${nLocals} \n")
+        vmLines.add("function ${subroutineName} ${nLocals}")
     }
 
     public void writeReturn(){
-        stringBuilder.append("return \n")
+        vmLines.add("return")
     }
 
     public void close(){
@@ -52,8 +52,20 @@ class VMWriter {
 
     void writeFile(){
         if(fileOutputStream != null) {
-            fileOutputStream.write(stringBuilder.toString().getBytes());
+            fileOutputStream.write(vmLines.join("\n").getBytes());
             close()
+        }
+    }
+
+    void resetVmLines(){
+        vmLines = new ArrayList<>();
+    }
+
+    public void replaceString(String find, String replace){
+
+        int index = vmLines.indexOf(find)
+        if(index > -1){
+            vmLines.set(index, replace)
         }
     }
 }
