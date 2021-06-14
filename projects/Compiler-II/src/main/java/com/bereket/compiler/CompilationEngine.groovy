@@ -14,8 +14,17 @@ class CompilationEngine {
     private String jackFileName
     private int labelCounter = 0;
     int currentIndex = 0;
-    private Set<String> voidMethods = new HashSet<>()
+
+    private Map<String, MethodMetaData> methodMetadataLookup = [:]
     private Map<String, Integer> localVarsLookup = new HashMap<>()
+
+    private class MethodMetaData{
+        boolean isVoid = false
+        boolean isStatic = false
+        int noOfLocalVars = -1
+
+        MethodMetaData(boolean isVoid, boolean isStatic){ this.isVoid = isVoid; this.isStatic = isStatic}
+    }
 
     public CompilationEngine(String inputFileName, String outputFileName){
         jackTokenizer = new JackTokenizer(inputFileName)
@@ -135,10 +144,13 @@ class CompilationEngine {
     public void compileSubroutineDec(String className){
 
         String subroutineName;
-        boolean isVoidRoutine = false
+        boolean isVoid = false
+        boolean isStatic = false
 
         TokenInformation tokenInformation = getCurrentToken()
         if(tokenInformation == null || (tokenInformation.token != "constructor" && tokenInformation.token != "function" && tokenInformation.token != "method")) return;
+
+        if(tokenInformation.token == "function") isStatic = true
 
         //reset subroutine scoped symbol table
         this.symbolTable.restSubRoutineSymbolTable()
@@ -152,7 +164,7 @@ class CompilationEngine {
             if(!(tokenInformation.token in ["void", "int", "char"]))
                 throw new RuntimeException("Invalid return type '${tokenInformation.token}' for method. It can only be 'void' or type")
             if(tokenInformation.token == "void")
-                isVoidRoutine = true
+                isVoid = true
             addToStructure(tokenInformation)
         } else if (tokenInformation.tokenType == TokenType.IDENTIFIER){
             addToStructure(tokenInformation)
@@ -163,6 +175,7 @@ class CompilationEngine {
 
         //Sub-routine name
         subroutineName = "${className}.${tokenInformation.token}"
+        if(!methodMetadataLookup.containsKey(subroutineName))  methodMetadataLookup.put(subroutineName, new MethodMetaData(isVoid, isStatic))
 
         tokenInformation = getCurrentTokenAndAdvance()
         //next is '('
@@ -180,11 +193,11 @@ class CompilationEngine {
         addToStructure(tokenInformation)
         compileSubroutineBody(subroutineName)
 
-        if(isVoidRoutine){
+        if(isVoid){
             //push constant 0 to the stack
             vmWriter.writePush(MemorySegment.CONST, 0)
-            voidMethods.add(subroutineName)
         }
+
         vmWriter.writeReturn()
 
         addToStructure("</subroutineDec>")
@@ -201,10 +214,15 @@ class CompilationEngine {
         addToStructure(tokenInformation)
 
         //write the function call here
-        vmWriter.writeFunction(subroutineName, localVarsLookup.get(subroutineName) ?: 0)
+        MethodMetaData metaData = methodMetadataLookup.get(subroutineName)
+        vmWriter.writeFunction(subroutineName, (metaData && metaData.noOfLocalVars > -1 ? metaData.noOfLocalVars : 0))
+
         int noOfLocalVars = compileVarDec()
         //will be filled in first pass
-        if(!localVarsLookup.containsKey(subroutineName)) localVarsLookup.put(subroutineName, noOfLocalVars)
+        if(metaData.noOfLocalVars == -1) {
+            metaData.noOfLocalVars = noOfLocalVars
+            methodMetadataLookup.put(subroutineName, metaData)
+        }
 
         compileStatements()
         tokenInformation = getCurrentTokenAndAdvance()
@@ -387,6 +405,10 @@ class CompilationEngine {
         addToStructure(tokenInformation) //var
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.tokenType != TokenType.IDENTIFIER) throw new RuntimeException("variable name is not valid : ${tokenInformation.token}")
+
+        String variableName = tokenInformation.token
+        SymbolTable.SymbolEntry symbolEntry = symbolTable.getSymbolEntry(variableName)
+
         addToStructure(tokenInformation)
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.token == "["){
@@ -398,11 +420,17 @@ class CompilationEngine {
             tokenInformation = getCurrentTokenAndAdvance()
         }
         if(tokenInformation.token != "=") throw new RuntimeException("Equal sign expected in expression. Found : ${tokenInformation.token}")
+
         addToStructure(tokenInformation)
         compileExpression()
         tokenInformation = getCurrentTokenAndAdvance()
         if(tokenInformation.token != ";")
             throw new RuntimeException("Variables declaration should terminate with ';'")
+
+        //POP/assign value to variable
+        vmWriter.writePop(symbolEntry.kind.memorySegment, symbolEntry.index)
+
+
         addToStructure(tokenInformation)
         addToStructure("</letStatement>")
     }
@@ -427,7 +455,7 @@ class CompilationEngine {
         tokenInformation = getCurrentTokenAndAdvance()
         if (tokenInformation.token != ")") throw new RuntimeException("While condition expression should end with ')'. Got : ${tokenInformation.token}")
 
-        vmWriter.writeArithmetic(Command.NEG)
+        vmWriter.writeArithmetic(Command.NOT)
         vmWriter.writeIf("${jackFileName}_${counter}_while_end")
 
         addToStructure(tokenInformation)
@@ -468,7 +496,7 @@ class CompilationEngine {
 
         if(tokenInformation.token != "{") throw new RuntimeException("'{' expected  to start if condition block")
 
-        vmWriter.writeArithmetic(Command.NEG)
+        vmWriter.writeArithmetic(Command.NOT)
         vmWriter.writeIf("${jackFileName}_${counter}_else")
 
 
@@ -480,6 +508,7 @@ class CompilationEngine {
         addToStructure(tokenInformation)
         tokenInformation = getCurrentToken()
 
+        vmWriter.writeGoto("${jackFileName}_${counter}_end")
         vmWriter.writeLabel("${jackFileName}_${counter}_else")
 
         if(tokenInformation != null && tokenInformation.token == "else"){
@@ -553,12 +582,12 @@ class CompilationEngine {
             programStructure.add(createXmlNode(tokenInformation.tokenType.tagName, tokenInformation.token))
 
             if(tokenInformation.token == "true"){
-                vmWriter.writePush(MemorySegment.CONST, 1)
-                vmWriter.writeArithmetic(Command.NEG)
+                vmWriter.writePush(MemorySegment.CONST, 0)
+                vmWriter.writeArithmetic(Command.NOT)
             } else if (tokenInformation.token in ["false", "null"]){
                 vmWriter.writePush(MemorySegment.CONST, 0)
             } else if(tokenInformation.token == "this"){
-            //TODO:
+//TODO:
             }
         } else if (tokenInformation.tokenType == TokenType.IDENTIFIER){ //varName | varName '[' expression ']' | subroutineCall | '(' expression ')'
             compileTermWithLeadingIdentifier(tokenInformation)
@@ -602,7 +631,7 @@ class CompilationEngine {
             addToStructure(tokenInformation)
             compileTerm()
 
-            Command cmd = tokenInformation.token == "~" ? Command.NEG : Command.NOT
+            Command cmd = tokenInformation.token == "~" ? Command.NOT : Command.NEG
             vmWriter.writeArithmetic(cmd)
 
         } else throw new RuntimeException("Term cannot start with '${tokenInformation.token }'")
@@ -619,8 +648,9 @@ class CompilationEngine {
                 throw new RuntimeException("Subroutine call should be terminated by  ')'")
 
             vmWriter.writeCall(part, noOfArgs)
-            if(voidMethods.contains(part)){
-                vmWriter.writePop(MemorySegment.CONST, 0)
+            MethodMetaData methodMetaData = methodMetadataLookup.get(part)
+            if(methodMetaData && methodMetaData.isVoid){
+                vmWriter.writePop(MemorySegment.TEMP, 0)
             }
             addToStructure(tokenInformation)
         } else if (tokenInformation.token == "."){ // [className].[subRoutine ( expressioinList ) ] <= only the dot part

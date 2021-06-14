@@ -8,7 +8,7 @@ public enum Command {
         switch (symbol){
             //"+", "-", "*", "/", "&", "|", "<", ">", "=", "&lt;", "&gt;", "&amp;"
            case "+": return ADD
-           case "~": return NOT
+           case "~": return NEG
            case "-": return SUB
            case ">":
            case "&gt;":
